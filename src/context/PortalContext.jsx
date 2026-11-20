@@ -25,13 +25,16 @@ export function PortalProvider({ children }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       setStorageWarning('')
+      setData(next)
+      return true
     } catch {
       setStorageWarning('Browser storage is unavailable. Changes will last only until this page is refreshed.')
     }
     setData(next)
+    return false
   }
   function saveDraft(draft) {
-    persist({ ...data, draft })
+    return persist({ ...data, draft })
   }
   function resetDemo() {
     persist({ ideas: structuredClone(demoIdeas), draft: { ...emptyDraft } })
