@@ -62,6 +62,7 @@ export function approvalBlocker(programme, userId) {
 export function assignmentBlocker({ programme, application, evaluatorIds, evaluators }) {
   if (!['open', 'closed'].includes(programme.status)) return 'Reviewers can be assigned only while the programme is running.'
   if (application.eligibility !== 'eligible') return 'Assign reviewers after the application passes the eligibility check.'
+  if (evaluatorIds.some(id => application.conflictedReviewerIds?.includes(id))) return 'A reviewer who declared a conflict must be replaced.'
   if (new Set(evaluatorIds).size !== evaluatorIds.length) return 'Choose each evaluator only once.'
   if (evaluatorIds.length > programme.reviewersPerApplication) return `This programme uses ${programme.reviewersPerApplication} reviewer${programme.reviewersPerApplication === 1 ? '' : 's'} per application.`
   const conflicted = evaluatorIds.map((id) => evaluators.find((item) => item.id === id)).find((evaluator) => !evaluator || evaluator.conflicts.includes(application.id))
@@ -71,16 +72,17 @@ export function assignmentBlocker({ programme, application, evaluatorIds, evalua
 
 // Least-loaded evaluators without a conflict, keeping anyone already assigned.
 export function suggestReviewers({ programme, application, evaluators, assignments }) {
-  const current = (assignments[application.id] || []).map((item) => item.evaluatorId)
-  const load = (id) => Object.values(assignments).flat().filter((item) => item.evaluatorId === id && item.progress !== 'submitted').length
+  const conflicted = new Set((assignments[application.id] || []).filter(item => item.progress === 'conflicted').map(item => item.evaluatorId))
+  const current = (assignments[application.id] || []).filter(item => item.progress !== 'conflicted').map((item) => item.evaluatorId)
+  const load = (id) => Object.values(assignments).flat().filter((item) => item.evaluatorId === id && !['submitted', 'conflicted'].includes(item.progress)).length
   const candidates = evaluators
-    .filter((evaluator) => !evaluator.conflicts.includes(application.id) && !current.includes(evaluator.id))
+    .filter((evaluator) => !evaluator.conflicts.includes(application.id) && !conflicted.has(evaluator.id) && !current.includes(evaluator.id))
     .sort((a, b) => load(a.id) - load(b.id) || a.id.localeCompare(b.id))
   return [...current, ...candidates.map((item) => item.id)].slice(0, programme.reviewersPerApplication)
 }
 
 export function isOverdue(assignment, now = Date.now()) {
-  return assignment.progress !== 'submitted' && Date.parse(assignment.dueAt) < now
+  return !['submitted', 'conflicted'].includes(assignment.progress) && Date.parse(assignment.dueAt) < now
 }
 
 // Applicant demo statuses map to the API's stage codes.
