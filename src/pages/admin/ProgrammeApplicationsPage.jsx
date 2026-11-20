@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { EyeOff, Wand2 } from 'lucide-react'
 import { useAdmin } from '../../context/AdminContext'
-import { useApplicationsByProgramme } from '../../hooks/useProgrammeApplications'
+import { useApplicationsByProgramme, useProgrammeAssignments } from '../../hooks/useProgrammeApplications'
 import { eligibilityLabels, evaluators, stageCodes } from '../../data/admin'
 import { assignmentBlocker, isOverdue, suggestReviewers } from '../../utils/admin'
 import { displayDate } from '../../utils/portal'
 import ProgrammeHeader from '../../components/staff/ProgrammeHeader'
 
-const progressLabels = { not_started: 'Not started', in_progress: 'In progress', submitted: 'Submitted' }
+const progressLabels = { not_started: 'Not started', in_progress: 'In progress', submitted: 'Submitted', conflicted: 'Conflict declared' }
 const views = [
   { id: 'all', label: 'All' },
   { id: 'unassigned', label: 'Needs reviewers' },
@@ -18,9 +18,9 @@ const views = [
 
 function AssignmentEditor({ programme, application, assignments, onDone }) {
   const { setAssignments } = useAdmin()
-  const [selected, setSelected] = useState((assignments[application.id] || []).map((item) => item.evaluatorId))
+  const [selected, setSelected] = useState((assignments[application.id] || []).filter(item => item.progress !== 'conflicted').map((item) => item.evaluatorId))
   const [error, setError] = useState('')
-  const openLoad = (id) => Object.values(assignments).flat().filter((item) => item.evaluatorId === id && item.progress !== 'submitted').length
+  const openLoad = (id) => Object.values(assignments).flat().filter((item) => item.evaluatorId === id && !['submitted', 'conflicted'].includes(item.progress)).length
   const blocker = assignmentBlocker({ programme, application, evaluatorIds: selected, evaluators })
 
   function toggle(id) {
@@ -44,7 +44,7 @@ function AssignmentEditor({ programme, application, assignments, onDone }) {
         <legend>Choose {programme.reviewersPerApplication} reviewer{programme.reviewersPerApplication === 1 ? '' : 's'} <span>{selected.length} of {programme.reviewersPerApplication} chosen</span></legend>
         <div className="st-evaluators">
           {evaluators.map((evaluator) => {
-            const conflict = evaluator.conflicts.includes(application.id)
+            const conflict = evaluator.conflicts.includes(application.id) || application.conflictedReviewerIds?.includes(evaluator.id)
             return (
               <label key={evaluator.id} className={(selected.includes(evaluator.id) ? 'is-selected ' : '') + (conflict ? 'is-conflicted' : '')}>
                 <input type="checkbox" checked={selected.includes(evaluator.id)} disabled={conflict} onChange={() => toggle(evaluator.id)} />
@@ -66,21 +66,22 @@ function AssignmentEditor({ programme, application, assignments, onDone }) {
 
 export default function ProgrammeApplicationsPage() {
   const { id } = useParams()
-  const { programmes, assignments } = useAdmin()
+  const { programmes } = useAdmin()
+  const assignments = useProgrammeAssignments()
   const applicationsFor = useApplicationsByProgramme()
   const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState('')
   const [message, setMessage] = useState('')
   const programme = programmes.find((item) => item.id === id)
   if (!programme) {
-    return <div className="st-page"><section className="st-panel st-empty"><h1>Programme not found</h1><Link className="st-button st-button-primary" to="/admin">All programmes</Link></section></div>
+    return <div className="st-page"><section className="st-panel st-empty"><h1>Programme not found</h1><Link className="st-button st-button-primary" to="/admin/programmes">All programmes</Link></section></div>
   }
 
   const applications = applicationsFor(programme.id)
   const view = views.some((item) => item.id === params.get('view')) ? params.get('view') : 'all'
   const matches = {
     all: () => true,
-    unassigned: (application) => application.eligibility === 'eligible' && !(assignments[application.id] || []).length,
+    unassigned: (application) => application.eligibility === 'eligible' && (assignments[application.id] || []).filter(item => item.progress !== 'conflicted').length < programme.reviewersPerApplication,
     eligibility: (application) => ['pending', 'correction_needed'].includes(application.eligibility),
     overdue: (application) => (assignments[application.id] || []).some((item) => isOverdue(item)),
   }
