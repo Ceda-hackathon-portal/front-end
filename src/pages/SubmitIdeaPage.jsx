@@ -6,13 +6,19 @@ import { themes } from '../data/portal'
 import { applicationFields, applicationSteps, draftProgress, resumeStep, validateIdea } from '../utils/applicant'
 
 const hints = {
-  title: 'Give your idea a short, descriptive name.',
-  theme: 'Choose the theme that best fits your idea.',
-  team: 'The name of your team or organisation.',
+  title: 'A short, descriptive name.',
+  theme: 'Choose the closest theme.',
+  team: 'Your team or organisation name.',
   problem: 'What needs to change, and who is affected?',
-  solution: 'How would your idea help? Explain what you would do differently.',
-  impact: 'Who would benefit, and how could you tell the idea is working?',
+  solution: 'How would your idea solve the problem?',
+  impact: 'Who benefits, and how would you measure the difference?',
 }
+const introductions = [
+  'All fields are required.',
+  'Describe the problem and your solution.',
+  'Describe the expected impact.',
+  'Check your answers before submitting.',
+]
 
 export default function SubmitIdeaPage() {
   const { draft, saveDraft, submitDemo, storageWarning } = usePortal()
@@ -27,17 +33,16 @@ export default function SubmitIdeaPage() {
   const submitting = useRef(false)
   const stepHeading = useRef(null)
   const previousStep = useRef(step)
-  useEffect(() => {
-    if (stepHeading.current) {
-      stepHeading.current.focus({ preventScroll: true })
-      if (previousStep.current !== step) {
-        stepHeading.current.scrollIntoView({ block: 'start', behavior: 'instant' })
-      }
-      previousStep.current = step
-    }
-  }, [step])
   const navigate = useNavigate()
   const progress = draftProgress(form)
+
+  useEffect(() => {
+    if (!stepHeading.current) return
+    stepHeading.current.focus({ preventScroll: true })
+    if (previousStep.current !== step) stepHeading.current.scrollIntoView({ block: 'start', behavior: 'instant' })
+    previousStep.current = step
+  }, [step])
+
   function update(event) {
     const next = { ...form, [event.target.name]: event.target.value }
     setForm(next)
@@ -45,6 +50,13 @@ export default function SubmitIdeaPage() {
     setSaved(saveDraft(next))
     setMessage('')
   }
+
+  function goToStep(index) {
+    setStep(index)
+    setErrors({})
+    setMessage('')
+  }
+
   function continueForm(event) {
     event.preventDefault()
     const nextErrors = validateIdea(form, step === 3 ? undefined : applicationSteps[step].fields)
@@ -61,27 +73,112 @@ export default function SubmitIdeaPage() {
     if (submitting.current) return
     submitting.current = true
     setBusy(true)
-    try { navigate('/workspace/ideas/' + submitDemo(form) + '?submitted=1') }
-    catch (error) { setMessage(error.message); submitting.current = false; setBusy(false) }
+    try {
+      navigate('/workspace/ideas/' + submitDemo(form) + '?submitted=1')
+    } catch (error) {
+      setMessage(error.message)
+      submitting.current = false
+      setBusy(false)
+    }
   }
+
   function renderField(key) {
     const field = applicationFields.find(item => item.key === key)
-    const common = { id: 'application-' + key, name: key, value: form[key], onChange: update, required: true, 'aria-invalid': Boolean(errors[key]), 'aria-describedby': `hint-${key}` + (errors[key] ? ` error-${key}` : '') }
-    return <div className="ap-field" key={key}><label htmlFor={common.id}>{field.label}</label><p id={'hint-' + key}>{hints[key]}</p>
-      {key === 'theme' ? <select {...common}><option value="">Select a theme</option>{themes.map(theme => <option value={theme.id} key={theme.id}>{theme.name}</option>)}</select>
-        : ['title', 'team'].includes(key) ? <input {...common} maxLength={field.max} autoComplete="off" /> : <textarea {...common} maxLength={field.max} rows={key === 'solution' ? 6 : 5} />}
-      {errors[key] && <span className="ap-field-error" id={'error-' + key}>{errors[key]}</span>}
-      {field.max && <span className="ap-field-count">{form[key].length.toLocaleString()} / {field.max.toLocaleString()}</span>}
-    </div>
+    const common = {
+      id: 'application-' + key, name: key, value: form[key], onChange: update, required: true,
+      'aria-invalid': Boolean(errors[key]),
+      'aria-describedby': `hint-${key}` + (errors[key] ? ` error-${key}` : ''),
+    }
+    return (
+      <div className={'ap-field ap-field-' + key} key={key}>
+        <label htmlFor={common.id}>{field.label}</label>
+        <p id={'hint-' + key}>{hints[key]}</p>
+        {key === 'theme' ? (
+          <select {...common}><option value="">Select a theme</option>{themes.map(theme => <option value={theme.id} key={theme.id}>{theme.name}</option>)}</select>
+        ) : ['title', 'team'].includes(key) ? (
+          <input {...common} maxLength={field.max} autoComplete="off" />
+        ) : (
+          <textarea {...common} maxLength={field.max} rows={key === 'solution' ? 7 : 6} />
+        )}
+        {errors[key] && <span className="ap-field-error" id={'error-' + key}>{errors[key]}</span>}
+        {field.max && <span className="ap-field-count">{form[key].length.toLocaleString()} / {field.max.toLocaleString()}</span>}
+      </div>
+    )
   }
-  return <div className="ap-page ap-submission-page"><Link className="ap-text-link ap-back-link" to="/workspace"><ArrowLeft size={15} />Applicant home</Link><header className="ap-page-intro"><span className={'ap-save-status' + (storageWarning ? ' has-warning' : '')} role="status">{storageWarning ? <CircleHelp size={15} /> : <Check size={15} />}{storageWarning ? 'Not saved to this device' : saved ? 'Saved on this device' : 'Your draft saves as you type'}</span></header>
-    <div className="ap-form-layout"><aside className="ap-form-sidebar"><ol className="ap-form-steps">{applicationSteps.map((item, index) => { const done = item.fields.length > 0 && !Object.keys(validateIdea(form, item.fields)).length; return <li key={item.title}><button type="button" onClick={() => { setStep(index); setMessage('') }} className={step === index ? 'is-current' : ''} aria-current={step === index ? 'step' : undefined}><span>{done ? <Check size={14} /> : index + 1}</span>{item.title}</button></li> })}</ol><div className="ap-form-help"><Link className="ap-text-link" to="/portal/help">Application guide<ArrowRight size={14} /></Link></div></aside>
-      <form className="ap-form-panel ap-panel" onSubmit={continueForm} noValidate><div className="ap-form-panel-header"><span className="ap-eyebrow">STEP {step + 1} OF 4</span><span>{progress.completed} of {progress.total} fields complete</span></div><div className="ap-progress-track"><span style={{ width: ((step + 1) / 4 * 100) + '%' }} /></div><h2 ref={stepHeading} tabIndex={-1}>{applicationSteps[step].title}</h2><p className="ap-form-introduction">{step === 0 ? 'A clear starting point. All fields are required.' : step === 1 ? 'Describe the problem and your solution.' : step === 2 ? 'Describe the expected impact.' : 'Check your answers before creating your preview submission.'}</p>
-        {Object.values(errors).some(Boolean) && <div className="ap-form-alert" role="alert">Please complete the highlighted fields before continuing.</div>}
-        {step < 3 ? applicationSteps[step].fields.map(renderField) : <><dl className="ap-review-summary">{applicationFields.map(field => <div key={field.key}><dt>{field.label}</dt><dd>{field.key === 'theme' ? themes.find(theme => theme.id === form.theme)?.name || 'Not provided' : form[field.key] || 'Not provided'}</dd><button type="button" onClick={() => setStep(applicationSteps.findIndex(item => item.fields.includes(field.key)))} aria-label={'Change ' + field.label.toLowerCase()}>Change</button></div>)}</dl><label className="ap-consent"><input id="application-consent" type="checkbox" checked={consent} onChange={event => { setConsent(event.target.checked); setErrors(previous => ({ ...previous, consent: undefined })) }} aria-invalid={Boolean(errors.consent)} /><span>I am using fictional information for this preview.</span></label>{errors.consent && <p className="ap-field-error">{errors.consent}</p>}<p className="ap-muted ap-preview-explanation">Your application is saved on this device. Nothing is sent to CEDA.</p></>}
-        {message && <p role="alert" className="ap-form-alert">{message}</p>}
-        <div className="ap-form-controls"><button className="ap-button ap-button-secondary" type="button" onClick={() => { saveDraft(form); navigate('/workspace') }}><Save size={16} />Save and close</button><div>{step > 0 && <button className="ap-button ap-button-quiet" type="button" onClick={() => setStep(step - 1)}><ArrowLeft size={15} />Back</button>}<button className="ap-button ap-button-primary" type="submit" disabled={busy}>{busy ? 'Submitting…' : step === 3 ? 'Submit application' : 'Continue'}<ArrowRight size={16} /></button></div></div>
-      </form>
+
+  return (
+    <div className="ap-page ap-submission-page">
+      <div className="ap-application-toolbar">
+        <Link className="ap-text-link" to="/workspace"><ArrowLeft size={15} />Applicant home</Link>
+        <span className={'ap-save-status' + (storageWarning ? ' has-warning' : '')} role="status">
+          {storageWarning ? <CircleHelp size={15} /> : <Check size={15} />}
+          {storageWarning ? 'Not saved to this device' : saved ? 'Saved on this device' : 'Saves as you type'}
+        </span>
+      </div>
+      <div className="ap-form-layout">
+        <form className="ap-form-panel ap-panel" onSubmit={continueForm} noValidate>
+          <header className="ap-form-panel-header">
+            <div><h2 ref={stepHeading} tabIndex={-1}>{applicationSteps[step].title}</h2><p>{introductions[step]}</p></div>
+            <span className="ap-step-number">{String(step + 1).padStart(2, '0')}<span> / 04</span></span>
+          </header>
+          {Object.values(errors).some(Boolean) && <div className="ap-form-alert" role="alert">Complete the highlighted fields to continue.</div>}
+          {step < 3 ? (
+            <div className="ap-field-grid">{applicationSteps[step].fields.map(renderField)}</div>
+          ) : (
+            <>
+              <dl className="ap-review-summary">
+                {applicationFields.map(field => (
+                  <div key={field.key}>
+                    <dt>{field.label}</dt>
+                    <dd>{field.key === 'theme' ? themes.find(theme => theme.id === form.theme)?.name || 'Not provided' : form[field.key] || 'Not provided'}</dd>
+                    <button type="button" onClick={() => goToStep(applicationSteps.findIndex(item => item.fields.includes(field.key)))} aria-label={'Change ' + field.label.toLowerCase()}>Change</button>
+                  </div>
+                ))}
+              </dl>
+              <label className="ap-consent">
+                <input id="application-consent" type="checkbox" checked={consent} aria-invalid={Boolean(errors.consent)}
+                  aria-describedby={errors.consent ? 'error-consent' : undefined}
+                  onChange={event => { setConsent(event.target.checked); setErrors(previous => ({ ...previous, consent: undefined })) }} />
+                <span>I am using fictional information for this preview.</span>
+              </label>
+              {errors.consent && <p className="ap-field-error" id="error-consent">{errors.consent}</p>}
+              <p className="ap-muted ap-preview-explanation">Saved on this device. Nothing is sent to CEDA.</p>
+            </>
+          )}
+          {message && <p role="alert" className="ap-form-alert">{message}</p>}
+          <div className="ap-form-controls">
+            <button className="ap-button ap-button-secondary" type="button" onClick={() => { saveDraft(form); navigate('/workspace') }}><Save size={16} />Save and close</button>
+            <div>
+              {step > 0 && <button className="ap-button ap-button-quiet" type="button" onClick={() => goToStep(step - 1)}><ArrowLeft size={15} />Back</button>}
+              <button className="ap-button ap-button-primary" type="submit" disabled={busy}>{busy ? 'Submitting…' : step === 3 ? 'Submit application' : 'Continue'}<ArrowRight size={16} /></button>
+            </div>
+          </div>
+        </form>
+        <aside className="ap-form-sidebar" aria-label="Application progress">
+          <h2>Your progress</h2>
+          <div className="ap-completion-ring" style={{ '--ap-completion': progress.percent + '%' }} role="progressbar"
+            aria-label="Application completion" aria-valuenow={progress.percent} aria-valuemin={0} aria-valuemax={100}
+            aria-valuetext={`${progress.completed} of ${progress.total} fields complete`}>
+            <strong>{progress.percent}<small>%</small></strong>
+          </div>
+          <p className="ap-completion-caption">{progress.completed} of {progress.total} fields complete</p>
+          <ol className="ap-form-steps">
+            {applicationSteps.map((item, index) => {
+              const done = item.fields.length > 0 && !Object.keys(validateIdea(form, item.fields)).length
+              return (
+                <li key={item.title}>
+                  <button type="button" onClick={() => goToStep(index)}
+                    className={(step === index ? 'is-current ' : '') + (done ? 'is-complete' : '')}
+                    aria-current={step === index ? 'step' : undefined}>
+                    <span>{done ? <Check size={13} /> : index + 1}</span>{item.title}
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+          <Link className="ap-text-link ap-progress-guide" to="/portal/help">Application guide<ArrowRight size={14} /></Link>
+        </aside>
+      </div>
     </div>
-  </div>
+  )
 }
