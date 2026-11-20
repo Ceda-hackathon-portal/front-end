@@ -17,6 +17,7 @@ import ReportsPage from './pages/ReportsPage'
 import AdminPage from './pages/AdminPage'
 import SystemPage from './pages/SystemPage'
 import PageLoader from './components/shared/PageLoader'
+import RouteProgress from './components/shared/RouteProgress'
 import ServicesPage from './pages/ServicesPage'
 import SearchPage from './pages/SearchPage'
 import InformationPage from './pages/InformationPage'
@@ -25,7 +26,7 @@ import './styles/applicant.css'
 export default function App() {
   const { pathname } = useLocation()
   const isApplicantPath = /^\/(portal|workspace)(\/|$)/.test(pathname)
-  return <><ScrollToTop />{!isApplicantPath && <PageLoader />}<GuestAuthModal /><PageWrapper><Routes>
+  return <><ScrollToTop /><PageLoader skip={isApplicantPath} /><RouteProgress /><GuestAuthModal /><PageWrapper><Routes>
     <Route element={<ApplicantLayout />}>
       <Route path="/portal" element={<DashboardPage />} />
       <Route path="/portal/programmes" element={<ApplicantProgrammesPage />} />
