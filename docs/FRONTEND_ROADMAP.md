@@ -25,7 +25,7 @@ The official notice supplies seven functional themes: submission, multi-level ev
 | `/system` | Technical controls and audit placeholder | `src/pages/SystemPage.jsx` |
 | `/about`, `/help`, `/privacy` | Supporting information | `src/pages/InformationPage.jsx` |
 
-Shared branding lives in `Brand.jsx`; navigation, footer, compact guest popup, loader and local guide in `src/components/shared/`. The navbar, footer, loader and hero use the original BOCRA source adapted for CEDA. Original homepage service styles live in `src/styles/bocra-home.css`. Global layout and restrained portal styles live in `src/styles/globals.css`. The latest-news section has been removed.
+Shared branding lives in `Brand.jsx`; navigation, footer, compact guest popup, loader and local guide in `src/components/shared/`. Homepage section styles live in `src/styles/home.css`. Global layout and restrained portal styles live in `src/styles/globals.css`. The latest-news section has been removed.
 
 ## Requirements coverage and next work
 
