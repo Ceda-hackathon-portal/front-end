@@ -1,4 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
+import LandingHeader from '../components/shared/LandingHeader'
 import HomePageSections from '../components/home/HomePageSections'
 
 export default function HomePage() {
@@ -23,6 +26,7 @@ export default function HomePage() {
   return (
     <>
       <section className="ceda-hero-frame">
+        <LandingHeader />
         <div className="ceda-hero-image" ref={heroRef}>
           <div className="ceda-hero-shade" />
           <div className="ceda-hero-copy">
@@ -31,6 +35,7 @@ export default function HomePage() {
               <span className="ceda-hero-divider" aria-hidden="true" />
               <h1><span>Innovation</span><span>Portal</span></h1>
             </div>
+            <Link className="landing-portal-link" to="/portal">Enter the portal<ArrowRight size={17} /></Link>
           </div>
         </div>
       </section>
