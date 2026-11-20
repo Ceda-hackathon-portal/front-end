@@ -7,6 +7,8 @@ Related repositories:
 - [backend-api](https://github.com/Ceda-hackathon-portal/backend-api): REST API the portal calls
 - [infra--devops](https://github.com/Ceda-hackathon-portal/infra--devops): Terraform for all AWS resources
 
+**Backend team:** start with the [front-end handover](docs/BACKEND_HANDOVER.md) (what was built, what changed and why), then the [API contract](docs/API_CONTRACT.md) (endpoints and JSON shapes the front end needs).
+
 ## Local development
 
 Working directory: `C:\Users\user\Documents\BAC\Ceda-hackathon-portal\front-end`.
