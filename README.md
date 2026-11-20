@@ -23,11 +23,11 @@ npm run dev
 
 ## Applicant portal preview
 
-Open `/portal` on the local Vite URL (for example `http://127.0.0.1:5174/portal`). Choose **Open applicant preview** to try an applicant workspace without using real credentials.
+Open `/portal` on the local Vite URL (for example `http://127.0.0.1:5174/portal`). Use the account icon or the applications panel to open sign-in. The existing **Demo access** section on the sign-in page still opens the local applicant workspace without real credentials.
 
 The applicant shell has its own compact header and navigation. It includes application search, local drafts, a four-step submission form, answer review, a local receipt/download, example feedback, programme themes and guidance. Every applicant page uses the shared full-width photo hero, with header controls over the image and plain page titles. The home and cattle images were supplied; three additional photographs and their provenance are listed in [Applicant image sources](docs/APPLICANT_IMAGE_SOURCES.md).
 
-Drafts and submissions use this browser's local storage. Demo identity ends on refresh; use the preview button again to return to saved work. These are not authenticated or server-owned records. No application or document is sent to CEDA. Programme eligibility, verified profiles, uploads and real notifications remain separate integration work.
+Drafts and submissions use this browser's local storage. Demo identity ends on refresh; use Demo access on the sign-in page again to return to saved work. These are not authenticated or server-owned records. No application or document is sent to CEDA. Programme eligibility, verified profiles, uploads and real notifications remain separate integration work.
 
 Run `npm test` for the focused application validation and return-route checks, and `npm run build` for the frontend build.
 
