@@ -36,7 +36,7 @@ export default function ProgrammeSettingsPage() {
   const [reason, setReason] = useState('')
 
   if (!programme) {
-    return <div className="st-page"><section className="st-panel st-empty"><h1>Programme not found</h1><p className="st-muted">It may have been created in a different browser.</p><Link className="st-button st-button-primary" to="/admin">All programmes</Link></section></div>
+    return <div className="st-page"><section className="st-panel st-empty"><h1>Programme not found</h1><p className="st-muted">It may have been created in a different browser.</p><Link className="st-button st-button-primary" to="/admin/programmes">All programmes</Link></section></div>
   }
 
   const editable = isEditable(programme)
