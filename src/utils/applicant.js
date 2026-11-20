@@ -32,8 +32,12 @@ export function applicationReference(idea) {
   return idea.reference || 'CEDA-DEMO-' + idea.id.replace('CEDA-DEMO-', '').split('-')[0].toUpperCase()
 }
 export function applicationText(idea) {
-  return ['CEDA applicant preview', applicationReference(idea), `Submitted: ${idea.submittedAt}`, '',
+  const contact = idea.applicant ? ['Applicant: ' + idea.applicant.fullName, 'Email: ' + idea.applicant.email, 'Phone: ' + idea.applicant.phone, 'Company: ' + idea.applicant.companyName] : []
+  const documents = (idea.documents || []).map(document => document.name + ' | ' + document.category + ' | SHA-256: ' + document.sha256)
+  return ['CEDA application record', applicationReference(idea), 'Version: ' + (idea.number || idea.version || 1), `Submitted: ${idea.submittedAt}`, '', ...contact, '',
     ...applicationFields.map(field => `${field.label}\n${field.key === 'theme' ? themes.find(theme => theme.id === idea.theme)?.name || idea.theme : idea[field.key]}\n`),
+    'Budget', ...(idea.budgetItems || []).map(item => item.description + ': BWP ' + item.amount), 'Funding requested: ' + (idea.fundingRequested || 'Not specified'), '',
+    'Documents', ...documents, '', 'Response / update note: ' + (idea.responseMessage || 'None'), '',
     'Saved on this device. Nothing has been sent to CEDA.'].join('\n')
 }
 
