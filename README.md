@@ -21,17 +21,19 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-`VITE_API_URL` in `.env.local` is the public API base URL reserved for frontend integration. The current prototype uses an in-memory demo identity and browser-local draft/submission data; it does not yet call the API. Vite inlines `VITE_*` values into the public bundle, so never put secrets in them.
+`VITE_API_URL` in `.env.local` is the public API base URL reserved for frontend integration. The frontend currently uses an in-memory workspace identity and browser-local data; it does not yet call the API. Vite inlines `VITE_*` values into the public bundle, so never put secrets in them.
 
-## Applicant portal preview
+## Applicant workspace
 
 Open `/portal` on the local Vite URL (for example `http://127.0.0.1:5174/portal`). Use the account icon or the applications panel to open sign-in. The existing **Demo access** section on the sign-in page still opens the local applicant workspace without real credentials.
 
-The applicant shell has its own compact header and navigation. It includes application search, local drafts, a four-step submission form, answer review, a local receipt/download, example feedback, programme themes and guidance. Every applicant page uses the shared full-width photo hero, with header controls over the image and plain page titles. The home and cattle images were supplied; three additional photographs and their provenance are listed in [Applicant image sources](docs/APPLICANT_IMAGE_SOURCES.md).
+The applicant shell has its own compact header and navigation. It includes anonymous eligibility guidance, a reusable applicant/company profile, separate drafts, six form sections, budget validation, saved document contents, review, a local receipt with Print / Save PDF, unread messages and versioned corrections. The requirements and service boundaries are in [Applicant delivery checklist](docs/APPLICANT_FLOW.md). Every applicant page uses the shared full-width photo hero, with header controls over the image and plain page titles. The home and cattle images were supplied; three additional photographs and their provenance are listed in [Applicant image sources](docs/APPLICANT_IMAGE_SOURCES.md).
 
-Drafts and submissions use this browser's local storage. Demo identity ends on refresh; use Demo access on the sign-in page again to return to saved work. These are not authenticated or server-owned records. No application or document is sent to CEDA. Programme eligibility, verified profiles, uploads and real notifications remain separate integration work.
+Drafts, profile details and submissions use local storage; actual document bytes use IndexedDB. Existing local records are migrated without removing their original copy. Workspace identity ends on refresh; use Demo access on the applicant sign-in page to return to saved work. Local references start with CEDA-LOCAL; legacy references stay unchanged on correction. Nothing is sent to CEDA. Account authentication, cross-device persistence, official receipts, file quarantine/scanning, officer verification and email/SMS delivery require the backend services.
 
-Run `npm test` for the focused application validation and return-route checks, and `npm run build` for the frontend build.
+Run `npm test` for applicant, programme-manager and staff workflow checks, including document constraints, snapshot isolation, recovery, ownership calculations, assigned reviews, private marks, decision gates and return routes. Run `npm run build` for the frontend build.
+
+The shared staff entry is `/admin`, with screening, assigned reviews, decisions, programmes, management insights and system status. Staff and applicant records connect through the local workflow; accounts and shared services remain unconnected. See [Staff workflow and service boundaries](docs/STAFF_FLOW.md) and [Staff photograph sources](docs/STAFF_IMAGE_SOURCES.md).
 
 ## Branching and reviews
 
