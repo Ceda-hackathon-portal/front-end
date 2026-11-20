@@ -34,6 +34,8 @@ const pageHeroes = {
     title: 'Application guide', image: 'applicant-guide.jpg', position: 'center 39%', mobilePosition: '58% center',
     action: 'Start an application', to: '/workspace/new',
   },
+  '/workspace/profile': { title: 'My profile', image: 'applicant-guide.jpg', position: 'center 39%', mobilePosition: '58% center' },
+  '/portal/eligibility': { title: 'Eligibility check', image: 'applicant-programmes.png', position: 'center 58%', mobilePosition: '70% center' },
   '/workspace/new': {
     title: 'New application', image: 'applicant-guide.jpg', position: 'center 39%', mobilePosition: '58% center',
   },
@@ -41,12 +43,13 @@ const pageHeroes = {
 
 export default function ApplicantLayout() {
   const { user, requireAuth, logout } = useAuth()
-  const { ideas, storageWarning } = usePortal()
+  const { messages, profile, storageWarning } = usePortal()
   const location = useLocation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const isApplicant = user?.role === 'submitter'
-  const messageCount = isApplicant ? ideas.reduce((sum, idea) => sum + idea.feedback.length, 0) : 0
+  const messageCount = isApplicant ? messages.filter(message => !message.readAt).length : 0
+  const dataLight = isApplicant && profile.preferences?.dataLight
   const isHome = location.pathname === '/portal' || location.pathname === '/workspace'
   const isApplication = /^\/workspace\/ideas\/[^/]+$/.test(location.pathname)
   const hero = pageHeroes[location.pathname] || {
@@ -61,7 +64,7 @@ export default function ApplicantLayout() {
   }
 
   return (
-    <div className="ap-portal">
+    <div className={'ap-portal' + (dataLight ? ' ap-data-light' : '')}>
       <a className="skip-link" href="#applicant-main">Skip to content</a>
       <aside className="ap-sidebar">
         <nav aria-label="Applicant navigation">
@@ -80,8 +83,8 @@ export default function ApplicantLayout() {
       <div className="ap-stage">
         <div className="ap-masthead"
           style={{ '--ap-image-position': hero.position, '--ap-mobile-position': hero.mobilePosition }}>
-          <img key={hero.image} className="ap-masthead-image" src={'/images/' + hero.image}
-            alt="" fetchPriority="high" decoding="async" />
+          {!dataLight && <img key={hero.image} className="ap-masthead-image" src={'/images/' + hero.image}
+            alt="" fetchPriority="high" decoding="async" />}
           <header className="ap-header">
             <Link to="/portal" className="ap-brand" aria-label="CEDA applicant portal home">
               <span className="ap-logo-plate"><img src="/images/ceda-logo.png" alt="CEDA" width="80" height="49" /></span>
@@ -95,15 +98,16 @@ export default function ApplicantLayout() {
             </form>
             <div className="ap-header-actions">
               <Link to="/workspace/messages" className="ap-header-icon"
-                aria-label={messageCount ? `Messages, ${messageCount} updates` : 'Messages'}>
+                aria-label={`Messages, ${messageCount} unread`}>
                 <Bell size={20} aria-hidden="true" />
                 {messageCount > 0 && <span className="ap-notification-count">{messageCount}</span>}
               </Link>
               {isApplicant ? (
                 <details className="ap-account" key={location.pathname}>
-                  <summary><span className="ap-avatar">AP</span><span className="ap-account-name">Applicant</span><ChevronDown size={14} /></summary>
+                  <summary aria-label="Applicant account"><span className="ap-avatar">AP</span><span className="ap-account-name">Applicant</span><ChevronDown size={14} /></summary>
                   <div className="ap-account-menu">
-                    <span>Applicant account</span>
+                    <span>{profile.fullName || 'Applicant account'}</span>
+                    <Link className="ap-profile-menu-link" to="/workspace/profile"><UserRound size={15} />My profile and documents</Link>
                     <button onClick={() => { logout(); navigate('/portal') }}><LogOut size={16} />Sign out</button>
                   </div>
                 </details>
@@ -126,7 +130,7 @@ export default function ApplicantLayout() {
           {storageWarning && <p className="ap-storage-warning" role="status">{storageWarning}</p>}
           <Outlet />
           <footer className="ap-footer">
-            <span>CEDA Innovation Portal</span><span>Preview only. Nothing is sent to CEDA.</span>
+            <span>CEDA Innovation Portal</span><span>Saved on this device. CEDA delivery requires the application service.</span>
             <Link to="/portal/help">Help & guidance</Link>
           </footer>
         </main>
