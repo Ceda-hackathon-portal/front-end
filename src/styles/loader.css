@@ -1,0 +1,83 @@
+/* Colours taken from the CEDA mark (ceda-logo.png). */
+:root {
+  --ceda-arc-red: #a53225;
+  --ceda-arc-orange: #e89927;
+  --ceda-arc-yellow: #eecb45;
+  --ceda-wordmark: #61423a;
+  --ceda-tagline: #8a7a74;
+}
+
+/* First-visit splash */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #fff;
+  transition: opacity .4s ease, visibility .4s;
+}
+.splash.is-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash p { margin: 0; line-height: 1; }
+
+.splash-mark { width: 132px; height: 74px; overflow: visible; }
+.splash-arc {
+  fill: none;
+  stroke-width: 11;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: splash-draw .6s cubic-bezier(.3, .7, .2, 1) forwards;
+}
+.splash-arc-outer { stroke: var(--ceda-arc-red); }
+.splash-arc-middle { stroke: var(--ceda-arc-orange); animation-delay: .15s; }
+.splash-arc-inner { stroke: var(--ceda-arc-yellow); animation-delay: .3s; }
+
+.splash-wordmark {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 34px;
+  letter-spacing: .14em;
+  padding-left: .14em; /* balances the trailing letter-spacing so the word sits centred */
+  color: var(--ceda-wordmark);
+  opacity: 0;
+  transform: translateY(6px);
+  animation: splash-rise .45s ease .6s forwards;
+}
+.splash-tagline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ceda-tagline);
+  opacity: 0;
+  transform: translateY(6px);
+  animation: splash-rise .45s ease .78s forwards;
+}
+.splash-tagline span { width: 4px; height: 4px; border-radius: 50%; background: var(--ceda-arc-red); }
+
+@keyframes splash-draw { to { stroke-dashoffset: 0; } }
+@keyframes splash-rise { to { opacity: 1; transform: none; } }
+
+/* Page-change bar */
+.route-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100001; pointer-events: none; }
+.route-progress span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--ceda-arc-red), var(--ceda-arc-orange) 60%, var(--ceda-arc-yellow));
+}
+.route-progress.is-running span { width: 75%; transition: width .5s cubic-bezier(.2, .7, .2, 1); }
+.route-progress.is-done span { width: 100%; opacity: 0; transition: width .2s ease, opacity .3s ease .2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-arc, .splash-wordmark, .splash-tagline { animation-duration: .01s; animation-delay: 0s; }
+  .splash, .route-progress span { transition: none !important; }
+}
