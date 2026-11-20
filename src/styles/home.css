@@ -1,5 +1,4 @@
-
-        .home-sections-block {
+.home-sections-block {
           padding: 80px 0;
         }
 
@@ -63,7 +62,7 @@
         .home-section-heading {
           margin: 0 0 48px;
           color: #111111;
-          font-family: "Plus Jakarta Sans", sans-serif;
+          font-family: "Poppins", sans-serif;
           font-size: clamp(32px, 4vw, 52px);
           font-weight: 800;
           line-height: 1.02;
@@ -112,7 +111,7 @@
 
         .home-service-title {
           color: #111111;
-          font-family: "Plus Jakarta Sans", sans-serif;
+          font-family: "Poppins", sans-serif;
           font-size: 17px;
           font-weight: 700;
           transition: color 0.2s ease;
@@ -121,7 +120,7 @@
         .home-service-description {
           margin-top: 4px;
           color: #6b7280;
-          font-family: "Inter", sans-serif;
+          font-family: "Poppins", sans-serif;
           font-size: 14px;
           font-weight: 400;
           line-height: 1.6;
@@ -186,7 +185,7 @@
         .home-step-number {
           display: block;
           margin-bottom: -16px;
-          font-family: "Plus Jakarta Sans", sans-serif;
+          font-family: "Poppins", sans-serif;
           font-size: 80px;
           font-weight: 800;
           line-height: 1;
@@ -196,7 +195,7 @@
         .home-step-title {
           margin-bottom: 10px;
           color: #ffffff;
-          font-family: "Plus Jakarta Sans", sans-serif;
+          font-family: "Poppins", sans-serif;
           font-size: 20px;
           font-weight: 700;
           transition: color 0.2s ease;
@@ -246,4 +245,19 @@
             font-size: 64px;
           }
         }
-      
+
+        /* Homepage typography: Poppins everywhere on the home page */
+        .ceda-hero-frame,
+        .home-sections-block,
+        .home-sections-shell {
+          font-family: "Poppins", sans-serif;
+        }
+
+        .ceda-hero-frame :is(h1, h2, h3, p, span, a, button),
+        .home-sections-block :is(h1, h2, h3, h4, h5, h6, p, span, a, button, strong, small) {
+          font-family: "Poppins", sans-serif;
+        }
+
+        .home-quick-text {
+          font-family: "Poppins", sans-serif;
+        }
