@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 :root {
   font-family: Inter, sans-serif;
   color: #111827;
@@ -97,7 +98,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 .ceda-hero-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #0b050653, #0b050612);
+  background: linear-gradient(180deg, #18120f88, transparent 38%), linear-gradient(90deg, #0b050653, #0b050612);
 }
 .ceda-hero-copy {
   position: relative;
@@ -119,8 +120,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 }
 .ceda-hero-divider { width: 1px; height: clamp(70px, 9vw, 120px); background: #ffffff40; flex-shrink: 0; }
 .ceda-hero-identity h1 {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
   font-size: clamp(30px, 4.8vw, 64px);
   line-height: 1.08;
   letter-spacing: -.025em;
