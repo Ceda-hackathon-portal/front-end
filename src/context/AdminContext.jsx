@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react'
-import { currentManager, evaluators, seedApplications, seedAssignments, seedProgrammes, templates } from '../data/admin'
+import { useAuth } from '../hooks/useAuth'
+import { currentManager as defaultManager, otherManager, evaluators, seedApplications, seedAssignments, seedProgrammes, templates } from '../data/admin'
 import { approvalBlocker, assignmentBlocker, isEditable, validateProgramme } from '../utils/admin'
 
 // Programme manager demo state, saved in this browser. Each action matches one endpoint in docs/API_CONTRACT.md,
@@ -13,29 +14,36 @@ function fresh() {
 
 function read() {
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-    if (value && Array.isArray(value.programmes) && value.programmes.every((item) => item.id && Array.isArray(item.criteria) && Array.isArray(item.history))
-      && value.assignments && typeof value.assignments === 'object') return value
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return fresh()
+    const value = JSON.parse(saved)
+    if (value && Array.isArray(value.programmes) && value.programmes.every(item => item.id && Array.isArray(item.criteria) && Array.isArray(item.history))
+      && value.assignments && typeof value.assignments === 'object' && !Array.isArray(value.assignments)) return value
   } catch {
-    // Unreadable storage starts the demo again.
+    // Preserve corrupt or inaccessible data; saving must not overwrite it with examples.
   }
-  return fresh()
+  return { ...fresh(), storageUnreadable: true }
 }
 
-const entry = (action) => ({ at: new Date().toISOString(), actor: currentManager.name, action })
 
 export function AdminProvider({ children }) {
+  const { staffUser } = useAuth()
+  const currentManager = staffUser?.id === otherManager.id ? otherManager : defaultManager
+  const entry = action => ({ at: new Date().toISOString(), actor: currentManager.name, action })
   const [data, setData] = useState(read)
-  const [storageWarning, setStorageWarning] = useState('')
+  const [storageWarning, setStorageWarning] = useState(data.storageUnreadable ? 'Saved programme data could not be read. The original copy has been kept. Restore browser storage before saving.' : '')
 
   function persist(next) {
-    setData(next)
+    if (data.storageUnreadable) throw new Error('Saved programme data could not be read. Restore browser storage before saving.')
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      setStorageWarning('')
     } catch {
-      setStorageWarning('Browser storage is unavailable. Changes will last only until this page is refreshed.')
+      const message = 'Changes could not be saved. Check browser storage and retry.'
+      setStorageWarning(message)
+      throw new Error(message)
     }
+    setData(next)
+    setStorageWarning('')
   }
 
   function changeProgramme(id, change) {
@@ -126,6 +134,15 @@ export function AdminProvider({ children }) {
     })
   }
 
+  // Workflow checks are performed by StaffWorkflowContext before this locked transition.
+  function closeScoring(id) {
+    if (staffUser?.role !== 'administrator') throw new Error('Only the administrator can close scoring.')
+    return changeProgramme(id, programme => {
+      if (programme.status !== 'closed') throw new Error('Close applications before closing scoring.')
+      return { ...programme, status: 'scoring_closed', history: [entry('Scoring closed after assigned reviews were checked'), ...programme.history] }
+    })
+  }
+
   function resetAdminDemo() {
     persist(fresh())
   }
@@ -133,7 +150,7 @@ export function AdminProvider({ children }) {
   return (
     <AdminContext.Provider value={{
       ...data, storageWarning, currentManager, createProgramme, updateProgramme, submitForApproval,
-      approveProgramme, returnToDraft, closeApplications, setAssignments, resetAdminDemo,
+      approveProgramme, returnToDraft, closeApplications, setAssignments, resetAdminDemo, closeScoring,
     }}>
       {children}
     </AdminContext.Provider>
