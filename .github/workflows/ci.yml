@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Steps below are skipped until the application code is migrated in.
+      - uses: actions/setup-node@v4
+        if: hashFiles('package-lock.json') != ''
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+
+      - name: Lint
+        if: hashFiles('eslint.config.*') != ''
+        run: npm run lint
+
+      - name: Test
+        if: hashFiles('package-lock.json') != ''
+        run: npm test --if-present
+
+      - name: Build
+        if: hashFiles('package-lock.json') != ''
+        run: npm run build
+        env:
+          VITE_API_URL: https://api.example.invalid
