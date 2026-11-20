@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { BarChart3, ClipboardCheck, FilePlus2, LayoutDashboard, Settings2 } from 'lucide-react'
+import { BarChart3, ClipboardCheck, FilePlus2, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePortal } from '../../context/PortalContext'
 import { roleHome } from '../../utils/portal'
@@ -21,7 +21,6 @@ export default function WorkspaceLayout({ title, action, children }) {
             <NavLink to={home} end><LayoutDashboard size={18} />{isSubmitter ? 'Overview' : 'Workspace'}</NavLink>
             {isSubmitter && <NavLink to="/workspace/new"><FilePlus2 size={18} />New idea</NavLink>}
             {!isSubmitter && user.role !== 'system-administrator' && <NavLink to="/reports"><BarChart3 size={18} />Reports</NavLink>}
-            {user.role === 'administrator' && <a href="#admin-foundations"><Settings2 size={18} />Platform settings</a>}
             <Link to="/how-it-works"><ClipboardCheck size={18} />Guidance</Link>
           </nav>
         </aside>

@@ -10,6 +10,7 @@ export function safeReturnPath(target, role) {
     /^\/workspace\/new(?:\?theme=(digital|sustainable|inclusive))?$/.test(target || '') ||
     /^\/workspace\/ideas\/[a-zA-Z0-9-]+(?:\?submitted=1)?$/.test(target || '')
   )) return target
+  if (role === 'administrator' && /^\/admin\/programmes\/[a-zA-Z0-9_-]+(?:\/applications(?:\?view=[a-z]+)?)?$/.test(target || '')) return target
   if (target === home || (['evaluator', 'adjudicator', 'administrator', 'management'].includes(role) && target === '/reports')) return target
   return home
 }

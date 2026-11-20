@@ -2,7 +2,7 @@ export const roles = [
   { id: 'submitter', label: 'Applicant', description: 'Develop an idea and track its progress.', home: '/workspace' },
   { id: 'evaluator', label: 'Evaluator', description: 'Review assigned ideas and give feedback.', home: '/review' },
   { id: 'adjudicator', label: 'Adjudicator', description: 'Compare evaluations and record decisions.', home: '/adjudication' },
-  { id: 'administrator', label: 'Programme administrator', description: 'Configure programmes, criteria and review assignments.', home: '/admin' },
+  { id: 'administrator', label: 'Programme manager', description: 'Set up programmes, assign evaluators and release outcomes.', home: '/admin' },
   { id: 'management', label: 'CEDA management', description: 'Read aggregate programme performance and reports.', home: '/management' },
   { id: 'system-administrator', label: 'System administrator', description: 'Manage technical security, audit and availability controls.', home: '/system' },
 ]

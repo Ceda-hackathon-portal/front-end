@@ -14,7 +14,10 @@ import IdeaDetailPage from './pages/IdeaDetailPage'
 import { ApplicantApplicationsPage, ApplicantHelpPage, ApplicantMessagesPage, ApplicantNotFoundPage, ApplicantProgrammesPage } from './pages/ApplicantPages'
 import ReviewPage from './pages/ReviewPage'
 import ReportsPage from './pages/ReportsPage'
-import AdminPage from './pages/AdminPage'
+import StaffLayout from './components/staff/StaffLayout'
+import AdminHomePage from './pages/admin/AdminHomePage'
+import ProgrammeSettingsPage from './pages/admin/ProgrammeSettingsPage'
+import ProgrammeApplicationsPage from './pages/admin/ProgrammeApplicationsPage'
 import SystemPage from './pages/SystemPage'
 import PageLoader from './components/shared/PageLoader'
 import RouteProgress from './components/shared/RouteProgress'
@@ -25,7 +28,7 @@ import './styles/applicant.css'
 
 export default function App() {
   const { pathname } = useLocation()
-  const isApplicantPath = /^\/(portal|workspace)(\/|$)/.test(pathname)
+  const isApplicantPath = /^\/(portal|workspace|admin)(\/|$)/.test(pathname)
   return <><ScrollToTop /><PageLoader skip={isApplicantPath} /><RouteProgress /><GuestAuthModal /><PageWrapper><Routes>
     <Route element={<ApplicantLayout />}>
       <Route path="/portal" element={<DashboardPage />} />
@@ -54,7 +57,14 @@ export default function App() {
     <Route path="/privacy" element={<InformationPage kind="privacy" />} />
     <Route element={<ProtectedRoute roles={['evaluator']} />}><Route path="/review" element={<ReviewPage />} /></Route>
     <Route element={<ProtectedRoute roles={['adjudicator']} />}><Route path="/adjudication" element={<ReviewPage adjudication />} /></Route>
-    <Route element={<ProtectedRoute roles={['administrator']} />}><Route path="/admin" element={<AdminPage />} /></Route>
+    <Route element={<ProtectedRoute roles={['administrator']} />}>
+      <Route element={<StaffLayout />}>
+        <Route path="/admin" element={<AdminHomePage />} />
+        <Route path="/admin/programmes/:id" element={<ProgrammeSettingsPage />} />
+        <Route path="/admin/programmes/:id/applications" element={<ProgrammeApplicationsPage />} />
+        <Route path="/admin/*" element={<InformationPage kind="not-found" />} />
+      </Route>
+    </Route>
     <Route element={<ProtectedRoute roles={['management']} />}><Route path="/management" element={<ReportsPage />} /></Route>
     <Route element={<ProtectedRoute roles={['system-administrator']} />}><Route path="/system" element={<SystemPage />} /></Route>
     <Route element={<ProtectedRoute roles={['evaluator', 'adjudicator', 'administrator', 'management']} />}><Route path="/reports" element={<ReportsPage />} /></Route>
