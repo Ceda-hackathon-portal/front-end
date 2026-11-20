@@ -1,0 +1,249 @@
+
+        .home-sections-block {
+          padding: 80px 0;
+        }
+
+        .home-sections-shell {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 0 24px;
+        }
+
+        .home-quick-link {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 26px 0;
+          color: #0f172a;
+          text-decoration: none;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+          transition: color 0.2s ease;
+        }
+
+        .home-quick-link:first-child {
+          border-top: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .home-quick-link:hover {
+          color: #1A3A6B;
+        }
+
+        .home-quick-text {
+          font-size: clamp(1.8rem, 3.2vw, 2.7rem);
+          font-weight: 700;
+          line-height: 1.05;
+          letter-spacing: -0.04em;
+        }
+
+        .home-quick-arrow {
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+
+        .home-quick-link:hover .home-quick-arrow {
+          transform: translateX(6px);
+        }
+
+        .home-stats-section {
+          width: 100%;
+          background: url(/images/ceda-innovation.png);
+          padding: 0;
+          min-height: 480px;
+          height: 62vh;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+
+        .home-services-section {
+          background: #ffffff;
+        }
+
+        .home-section-heading {
+          margin: 0 0 48px;
+          color: #111111;
+          font-family: "Plus Jakarta Sans", sans-serif;
+          font-size: clamp(32px, 4vw, 52px);
+          font-weight: 800;
+          line-height: 1.02;
+          letter-spacing: -0.025em;
+        }
+
+        .home-services-columns {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 40px;
+        }
+
+        .home-services-column {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .home-service-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 20px;
+          padding: 24px 0;
+          border-bottom: 1px solid #e5e7eb;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-decoration: none;
+          color: inherit;
+        }
+
+        .home-service-icon-box {
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          border-radius: 10px;
+          background: #f8f9fa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #1A3A6B;
+          transition: background 0.2s ease;
+        }
+
+        .home-service-copy {
+          min-width: 0;
+        }
+
+        .home-service-title {
+          color: #111111;
+          font-family: "Plus Jakarta Sans", sans-serif;
+          font-size: 17px;
+          font-weight: 700;
+          transition: color 0.2s ease;
+        }
+
+        .home-service-description {
+          margin-top: 4px;
+          color: #6b7280;
+          font-family: "Inter", sans-serif;
+          font-size: 14px;
+          font-weight: 400;
+          line-height: 1.6;
+        }
+
+        .home-service-arrow {
+          margin-left: auto;
+          flex-shrink: 0;
+          color: #9ca3af;
+          transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .home-service-row:hover .home-service-title {
+          color: #1A3A6B;
+        }
+
+        .home-service-row:hover .home-service-icon-box {
+          background: #D6E4F7;
+        }
+
+        .home-service-row:hover .home-service-arrow {
+          transform: translateX(4px);
+          color: #1A3A6B;
+        }
+
+        .home-steps-section {
+          background: url(/images/ceda-innovation.png);
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+
+        .home-steps-row {
+          display: flex;
+          gap: 0;
+        }
+
+        .home-step-item {
+          flex: 1;
+          padding: 0 40px;
+          border-right: 1px solid #e5e7eb;
+          text-decoration: none;
+          color: inherit;
+        }
+
+        .home-step-item:last-child {
+          border-right: none;
+        }
+
+        .home-step-link {
+          transition: transform 0.2s ease;
+        }
+
+        .home-step-link:hover {
+          transform: translateY(-2px);
+        }
+
+        .home-step-link:hover .home-step-title {
+          color: #1A3A6B;
+        }
+
+        .home-step-number {
+          display: block;
+          margin-bottom: -16px;
+          font-family: "Plus Jakarta Sans", sans-serif;
+          font-size: 80px;
+          font-weight: 800;
+          line-height: 1;
+          color: #f0f0f0;
+        }
+
+        .home-step-title {
+          margin-bottom: 10px;
+          color: #ffffff;
+          font-family: "Plus Jakarta Sans", sans-serif;
+          font-size: 20px;
+          font-weight: 700;
+          transition: color 0.2s ease;
+          text-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+        }
+
+        @media (max-width: 960px) {
+
+          .home-steps-row {
+            flex-direction: column;
+          }
+
+          .home-step-item {
+            padding: 0 0 28px;
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+          }
+
+          .home-step-item:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .home-sections-shell {
+            padding: 0 20px;
+          }
+
+          .home-stats-section {
+            padding: 64px 20px;
+          }
+
+          .home-quick-link {
+            padding: 22px 0;
+          }
+
+          .home-quick-text {
+            font-size: 1.75rem;
+          }
+
+          .home-service-row {
+            gap: 16px;
+          }
+
+          .home-step-number {
+            font-size: 64px;
+          }
+        }
+      
