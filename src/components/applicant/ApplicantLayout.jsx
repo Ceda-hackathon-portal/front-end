@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Bell, ChevronDown, CircleHelp, FileText, Home, Layers, LogOut, Mail, Search } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, CircleHelp, FileText, Home, Layers, LogOut, Mail, Search, UserRound } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePortal } from '../../context/PortalContext'
 import { roleHome } from '../../utils/portal'
@@ -15,7 +15,7 @@ const navigation = [
 
 const homeHero = {
   title: 'Applicant portal', image: 'applicant-hero.png', position: 'center 44%', mobilePosition: '61% center',
-  home: true, action: 'Start an application', to: '/workspace/new',
+  action: 'Start an application', to: '/workspace/new',
 }
 const pageHeroes = {
   '/portal': homeHero,
@@ -40,7 +40,7 @@ const pageHeroes = {
 }
 
 export default function ApplicantLayout() {
-  const { user, startDemo, logout } = useAuth()
+  const { user, requireAuth, logout } = useAuth()
   const { ideas, storageWarning } = usePortal()
   const location = useLocation()
   const navigate = useNavigate()
@@ -53,11 +53,6 @@ export default function ApplicantLayout() {
     title: isApplication ? 'Application details' : 'Page not found',
     image: isApplication ? 'applicant-enterprise.jpg' : 'applicant-guide.jpg',
     position: 'center 42%', mobilePosition: '65% center',
-  }
-
-  function openPreview() {
-    startDemo('submitter')
-    navigate(location.pathname.startsWith('/workspace') ? location.pathname + location.search : '/workspace')
   }
 
   function searchApplications(event) {
@@ -83,7 +78,7 @@ export default function ApplicantLayout() {
       </aside>
 
       <div className="ap-stage">
-        <div className={'ap-masthead' + (hero.home ? ' ap-masthead-home' : '')}
+        <div className="ap-masthead"
           style={{ '--ap-image-position': hero.position, '--ap-mobile-position': hero.mobilePosition }}>
           <img key={hero.image} className="ap-masthead-image" src={'/images/' + hero.image}
             alt="" fetchPriority="high" decoding="async" />
@@ -99,7 +94,6 @@ export default function ApplicantLayout() {
               <button type="submit" aria-label="Run application search"><ArrowRight size={16} /></button>
             </form>
             <div className="ap-header-actions">
-              <span className="ap-preview-label">Frontend preview</span>
               <Link to="/workspace/messages" className="ap-header-icon"
                 aria-label={messageCount ? `Messages, ${messageCount} updates` : 'Messages'}>
                 <Bell size={20} aria-hidden="true" />
@@ -109,14 +103,17 @@ export default function ApplicantLayout() {
                 <details className="ap-account" key={location.pathname}>
                   <summary><span className="ap-avatar">AP</span><span className="ap-account-name">Applicant</span><ChevronDown size={14} /></summary>
                   <div className="ap-account-menu">
-                    <span>Applicant preview</span>
+                    <span>Applicant account</span>
                     <button onClick={() => { logout(); navigate('/portal') }}><LogOut size={16} />Sign out</button>
                   </div>
                 </details>
               ) : user ? (
                 <Link className="ap-button ap-button-small ap-button-secondary" to={roleHome(user.role)}>My workspace</Link>
               ) : (
-                <button className="ap-button ap-button-small ap-button-secondary" onClick={openPreview}>Open applicant preview</button>
+                <button className="ap-account-trigger" type="button" aria-label="Sign in"
+                  onClick={() => requireAuth(location.pathname.startsWith('/workspace') ? location.pathname + location.search : '/workspace')}>
+                  <UserRound size={20} strokeWidth={1.6} aria-hidden="true" />
+                </button>
               )}
             </div>
           </header>
