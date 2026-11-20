@@ -12,7 +12,7 @@ export default function ProgrammeHeader({ programme, applicationCount }) {
   const dates = programme.opensAt && programme.closesAt ? `Applications ${displayDate(programme.opensAt)} to ${displayDate(programme.closesAt)}` : 'Dates not set'
   return (
     <>
-      <Link className="st-back" to="/admin"><ArrowLeft size={15} aria-hidden="true" />All programmes</Link>
+      <Link className="st-back" to="/admin/programmes"><ArrowLeft size={15} aria-hidden="true" />All programmes</Link>
       <header className="st-page-header">
         <div>
           <span className="st-eyebrow">{programme.code || 'No code yet'} · {template?.name}</span>
