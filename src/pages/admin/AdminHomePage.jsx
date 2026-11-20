@@ -2,14 +2,15 @@ import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Plus, X } from 'lucide-react'
 import { useAdmin } from '../../context/AdminContext'
-import { useApplicationsByProgramme } from '../../hooks/useProgrammeApplications'
+import { useApplicationsByProgramme, useProgrammeAssignments } from '../../hooks/useProgrammeApplications'
 import { evaluators, templates } from '../../data/admin'
 import { approvalBlocker, isOverdue } from '../../utils/admin'
 import { displayDate } from '../../utils/portal'
 import { ProgrammeStatus } from '../../components/staff/ProgrammeHeader'
 
 export default function AdminHomePage() {
-  const { programmes, assignments, currentManager, createProgramme } = useAdmin()
+  const { programmes, currentManager, createProgramme } = useAdmin()
+  const assignments = useProgrammeAssignments()
   const applicationsFor = useApplicationsByProgramme()
   const navigate = useNavigate()
   const dialog = useRef(null)
@@ -23,7 +24,7 @@ export default function AdminHomePage() {
       attention.unshift({ key: programme.id + '-approve', to: '/admin/programmes/' + programme.id, title: `Approve ${programme.name}`, detail: `Submitted by ${programme.lastEditedBy.name}. Check the settings, then approve or return it.` })
     }
     const applications = applicationsFor(programme.id)
-    const unassigned = applications.filter((item) => item.eligibility === 'eligible' && !(assignments[item.id] || []).length)
+    const unassigned = applications.filter((item) => item.eligibility === 'eligible' && (assignments[item.id] || []).filter(assignment => assignment.progress !== 'conflicted').length < programme.reviewersPerApplication)
     if (unassigned.length && ['open', 'closed'].includes(programme.status)) {
       attention.push({ key: programme.id + '-assign', to: `/admin/programmes/${programme.id}/applications?view=unassigned`, title: `${unassigned.length} application${unassigned.length === 1 ? ' needs' : 's need'} reviewers`, detail: `${programme.name}. These passed the eligibility check.` })
     }
