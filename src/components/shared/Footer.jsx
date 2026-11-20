@@ -14,6 +14,7 @@ const organisation = [
   ['Help', '/help'],
   ['Guidelines', '/how-it-works'],
   ['Privacy', '/privacy'],
+  ['CEDA staff sign in', '/staff'],
 ]
 
 const highlights = ['Idea submission', 'Evaluation', 'Feedback', 'Progress tracking', 'CEDA portal']
