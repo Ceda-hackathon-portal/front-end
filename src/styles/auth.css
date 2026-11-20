@@ -28,6 +28,9 @@ html:has(.auth-entry) { zoom: 1; scroll-padding-top: 24px; }
 .auth-entry-demo-row select { flex: 1; border-color: #deded4; background: #fafaf7; border-radius: 5px; padding: 10px; font-size: 12px; }
 .auth-entry-demo-row button { border: 1px solid #d7cebf; border-radius: 5px; padding: 10px 14px; background: white; color: #70583f; display: flex; align-items: center; gap: 9px; font-size: 12px; }
 .auth-entry-demo > div > a { display: block; margin: 15px 0 0; font-size: 11px; }
+.auth-entry-demo-open { width: 100%; justify-content: space-between; border: 1px solid #d7cebf; border-radius: 5px; padding: 10px 14px; background: white; color: #70583f; display: flex; align-items: center; gap: 9px; font-size: 12px; }
+.auth-entry-intro { font-size: 12px; color: #8a8c81; line-height: 1.7; margin: -6px 0 18px; }
+.auth-entry-intro a { color: #70583f; text-decoration: underline; text-underline-offset: 2px; }
 .auth-entry-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 38px; color: #999c90; font-size: 10px; }
 .auth-entry-footer a:first-child { display: flex; align-items: center; gap: 8px; }
 .auth-entry-visual { position: relative; background: #6b543c; min-height: 650px; overflow: hidden; }
