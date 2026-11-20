@@ -1,45 +1,84 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ArrowUpRight, BookOpen, Check, FilePenLine, FilePlus2, Files, Lightbulb } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BookOpen, Check, FilePenLine, MessageSquareText } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { usePortal } from '../context/PortalContext'
 import ApplicationList from '../components/applicant/ApplicationList'
-import { draftProgress } from '../utils/applicant'
-
-const quickActions = [
-  { title: 'Start an application', href: '/workspace/new', icon: FilePlus2 },
-  { title: 'Continue a draft', href: '/workspace/new', icon: FilePenLine },
-  { title: 'Track an application', href: '/workspace/applications', icon: Files },
-  { title: 'Application guide', href: '/portal/help', icon: BookOpen },
-]
+import { applicationFields, applicationSteps, draftProgress, resumeStep, validateIdea } from '../utils/applicant'
+import { roleHome } from '../utils/portal'
 
 export default function DashboardPage() {
-  const { user, startDemo } = useAuth()
+  const { user, requireAuth } = useAuth()
   const { ideas, draft } = usePortal()
-  const [tab, setTab] = useState('applications')
   const isApplicant = user?.role === 'submitter'
   const progress = draftProgress(draft)
+  const hasDraft = isApplicant && progress.completed > 0
+  const nextStep = hasDraft ? resumeStep(draft) : 0
+  const updates = isApplicant ? ideas.flatMap(idea => idea.feedback.map(feedback => ({ ...feedback, idea }))).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) : []
+  const stats = [
+    ['Applications', ideas.length],
+    ['In review', ideas.filter(idea => idea.status === 'Under review').length],
+    ['Feedback', updates.length],
+    ['Drafts', hasDraft ? 1 : 0],
+  ]
+
   return (
-    <div className="ap-home">
-      <div className="ap-dashboard-grid">
-        <div className="ap-dashboard-primary">
-          <section className="ap-panel ap-quick-panel"><div className="ap-section-title"><h2>Quick actions</h2><span className="ap-section-line" /></div><div className="ap-quick-grid">{quickActions.map(({ title, href, icon: Icon }) => <Link className="ap-quick-action" to={href} key={title}><Icon size={23} strokeWidth={1.5} aria-hidden="true" /><div><strong>{title}</strong></div><ArrowUpRight className="ap-action-arrow" size={17} /></Link>)}</div></section>
-          <section className="ap-programme-feature"><div><h2>Programmes</h2><Link className="ap-text-link" to="/portal/programmes">Explore programmes<ArrowRight size={16} /></Link></div><img src="/images/applicant-programmes.png" width="1916" height="821" alt="A cattle enterprise" loading="lazy" /></section>
-          <section className="ap-how-panel"><div className="ap-section-title"><h2>How it works</h2></div><ol className="ap-how-steps">{[['01', 'Prepare', 'Describe your idea'], ['02', 'Submit', 'Check every detail'], ['03', 'Keep track', 'See your next step']].map(([number, title, text]) => <li key={number}><span>{number}</span><div><strong>{title}</strong><p>{text}</p></div></li>)}</ol></section>
-        </div>
-        <aside className="ap-dashboard-secondary">
-          <section className="ap-panel ap-my-applications"><div className="ap-section-title"><h2>My applications</h2><Files size={19} strokeWidth={1.4} /></div>
-            <div className="ap-tabs" role="tablist" aria-label="Application view">{[['applications', 'Submitted', isApplicant ? ideas.length : 0], ['draft', 'Draft', isApplicant && progress.completed ? 1 : 0]].map(([id, label, count]) => <button key={id} id={'tab-' + id} type="button" role="tab" aria-selected={tab === id} aria-controls="application-tab-panel" tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)} onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 'applications' : event.key === 'End' ? 'draft' : tab === 'applications' ? 'draft' : 'applications'; setTab(next); document.getElementById('tab-' + next)?.focus() } }}>{label}<span>{count}</span></button>)}</div>
-            <div id="application-tab-panel" role="tabpanel" aria-labelledby={'tab-' + tab}>
-              {!isApplicant ? <div className="ap-empty"><Files size={30} strokeWidth={1.1} /><h3>Applicant preview</h3><p>Open the applicant preview to try the submission journey.</p><button className="ap-button ap-button-secondary" onClick={() => startDemo('submitter')}>Open applicant preview<ArrowRight size={15} /></button></div>
-                : tab === 'applications' ? <><ApplicationList ideas={ideas.slice(0, 3)} compact />{ideas.length === 0 && <div className="ap-empty"><p>You have no submissions yet.</p><Link className="ap-text-link" to="/workspace/new">Start your first application<ArrowRight size={15} /></Link></div>}<Link className="ap-panel-bottom-link" to="/workspace/applications">View all applications<ArrowRight size={15} /></Link></>
-                  : progress.completed ? <div className="ap-draft-preview"><span className="ap-soft-label"><FilePenLine size={13} />Draft</span><h3>{draft.title || 'Untitled application'}</h3><p>{progress.completed} of {progress.total} fields complete</p><div className="ap-progress-track"><span style={{ width: progress.percent + '%' }} /></div><Link className="ap-text-link" to="/workspace/new">Continue application<ArrowRight size={15} /></Link></div>
-                    : <div className="ap-empty"><FilePenLine size={28} strokeWidth={1.1} /><h3>No draft in progress.</h3><p>Your application saves here as you write.</p><Link className="ap-text-link" to="/workspace/new">Start an application<ArrowRight size={15} /></Link></div>}
+    <div className="ap-home ap-home-board">
+      <aside className="ap-journey-rail ap-panel" aria-label="Application steps">
+        <h2>Application steps</h2>
+        <ol>
+          {applicationSteps.map((item, index) => {
+            const done = hasDraft && item.fields.length > 0 && !Object.keys(validateIdea(draft, item.fields)).length
+            const next = index === nextStep
+            return (
+              <li key={item.title} className={(done ? 'is-complete ' : '') + (next ? 'is-next' : '')}>
+                <span className="ap-journey-marker">{done ? <Check size={12} /> : String(index + 1).padStart(2, '0')}</span>
+                <div><strong>{item.title}</strong><small>{done ? 'Complete' : next ? 'Next step' : 'Upcoming'}</small></div>
+              </li>
+            )
+          })}
+        </ol>
+        <Link className="ap-text-link" to="/portal/help">View the guide<ArrowUpRight size={14} /></Link>
+      </aside>
+      <div className="ap-workspace-grid">
+        <section className="ap-workspace-stats ap-panel" aria-label="Workspace overview">
+          <dl>{stats.map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{isApplicant ? String(count).padStart(2, '0') : '—'}</dd></div>)}</dl>
+          <Link className="ap-text-link" to="/workspace/applications">All applications<ArrowUpRight size={15} /></Link>
+        </section>
+        <section className="ap-current-application ap-panel">
+          <div className="ap-tile-heading"><FilePenLine size={18} strokeWidth={1.5} /><span>{hasDraft ? 'Application draft' : 'New application'}</span><span className="ap-tile-index">01</span></div>
+          <h2>{hasDraft ? draft.title || 'Untitled application' : 'Start an application'}</h2>
+          <div className="ap-draft-metadata"><span>{hasDraft ? applicationSteps[nextStep].title : applicationSteps.length + ' steps'}</span><span>{hasDraft ? progress.percent + '% complete' : applicationFields.length + ' fields'}</span></div>
+          <div className="ap-progress-track"><span style={{ width: (hasDraft ? progress.percent : 0) + '%' }} /></div>
+          <Link className="ap-button ap-button-primary" to="/workspace/new">{hasDraft ? 'Continue application' : 'Start application'}<ArrowRight size={16} /></Link>
+        </section>
+        <Link className="ap-programme-photo" to="/portal/programmes">
+          <img src="/images/applicant-programmes.png" alt="A cattle enterprise" width="1916" height="821" loading="lazy" />
+          <span><span>Explore</span><strong>Programmes</strong></span><ArrowUpRight size={23} />
+        </Link>
+        <section className="ap-board-applications ap-panel">
+          <div className="ap-section-title"><h2>My applications</h2><Link className="ap-text-link" to="/workspace/applications" aria-label="View all applications"><ArrowUpRight size={18} /></Link></div>
+          {isApplicant ? (
+            <>
+              <ApplicationList ideas={ideas.slice(0, 3)} compact />
+              {!ideas.length && <div className="ap-empty"><p>No submitted applications yet.</p></div>}
+              <Link className="ap-panel-bottom-link" to="/workspace/applications">View applications<ArrowRight size={15} /></Link>
+            </>
+          ) : (
+            <div className="ap-empty">
+              <p>{user ? 'Continue in your workspace.' : 'Sign in to see your applications.'}</p>
+              {user ? <Link className="ap-button ap-button-secondary" to={roleHome(user.role)}>My workspace<ArrowRight size={15} /></Link>
+                : <button type="button" className="ap-button ap-button-secondary" onClick={() => requireAuth('/workspace')}>Sign in<ArrowRight size={15} /></button>}
             </div>
+          )}
+        </section>
+        <div className="ap-workspace-notes">
+          <section className="ap-board-update ap-panel">
+            <div className="ap-tile-heading"><MessageSquareText size={18} strokeWidth={1.5} /><h2>Feedback</h2></div>
+            {updates.length ? <><h3>{updates[0].idea.title}</h3><p>{updates[0].message}</p><Link className="ap-text-link" to={'/workspace/ideas/' + updates[0].idea.id}>Read feedback<ArrowRight size={14} /></Link></>
+              : <><p>{isApplicant ? 'No feedback yet.' : 'Feedback appears here after sign-in.'}</p><Link className="ap-text-link" to="/workspace/messages">View messages<ArrowRight size={14} /></Link></>}
           </section>
-          <section className="ap-help-note"><span className="ap-small-icon"><Lightbulb size={21} strokeWidth={1.4} /></span><div><h3>Before you apply</h3><Link className="ap-text-link" to="/portal/help">Read the guide<ArrowUpRight size={14} /></Link></div></section>
-          <div className="ap-trust-note"><Check size={15} /><span>Your draft stays on this device.</span></div>
-        </aside>
+          <Link className="ap-board-guide ap-panel" to="/portal/help"><BookOpen size={23} strokeWidth={1.4} /><div><h2>Application guide</h2><span>What to prepare</span></div><ArrowUpRight size={18} /></Link>
+        </div>
       </div>
     </div>
   )
