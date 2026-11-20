@@ -12,8 +12,8 @@ const services = [
   { title: "Submit an idea", description: "Start a submission.", to: "/workspace/new", icon: FileText, secure: true },
   { title: "My submissions", description: "Drafts and progress.", to: "/workspace", icon: Search, secure: true },
   { title: "Programmes", description: "Explore innovation themes.", to: "/challenges", icon: Users },
-  { title: "Reviews", description: "Evaluation workspace.", to: "/login", icon: ClipboardCheck },
-  { title: "Reports", description: "Programme overview.", to: "/reports", icon: LayoutDashboard, secure: true },
+  { title: "Help", description: "Questions and support.", to: "/help", icon: ClipboardCheck },
+  { title: "Services", description: "Everything in the portal.", to: "/services", icon: LayoutDashboard },
   { title: "Guidelines", description: "Before you submit.", to: "/how-it-works", icon: BookOpen },
 ];
 const serviceColumns = [services.slice(0, 3), services.slice(3, 6)];
