@@ -3,7 +3,8 @@ import Footer from './Footer'
 import { useLocation } from 'react-router-dom'
 export default function PageWrapper({ children }) {
   const { pathname } = useLocation()
-  if (/^\/(portal|workspace|admin)(\/|$)/.test(pathname) || ['/login', '/register', '/forgot-password'].includes(pathname)) return children
+  // Applicant portal, staff workspaces and sign-in pages bring their own shells, so the public navigation never appears on staff pages.
+  if (/^\/(portal|workspace|staff|admin|review|adjudication|management|reports|system)(\/|$)/.test(pathname) || ['/login', '/register', '/forgot-password'].includes(pathname)) return children
   return (
     <div className="site-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
