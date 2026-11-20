@@ -1,14 +1,14 @@
-import { usePortal } from '../context/PortalContext'
-import { seedApplications } from '../data/admin'
-import { fromApplicantIdea } from '../utils/admin'
+import { useStaffWorkflow } from '../context/StaffWorkflowContext'
 
-// The open demo programme receives the sample applications plus everything submitted in the applicant demo,
-// so one idea can be followed from the applicant portal into the programme manager's view.
 export const DEMO_INTAKE_PROGRAMME = 'p_ich_2026'
 
+// Read the same eligibility result used by screening, so newly screened applicant
+// submissions become available for reviewer assignment without changing their evidence.
 export function useApplicationsByProgramme() {
-  const { ideas } = usePortal()
-  const intake = [...ideas.map(fromApplicantIdea), ...seedApplications]
-    .sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt))
-  return (programmeId) => (programmeId === DEMO_INTAKE_PROGRAMME ? intake : [])
+  const { applications } = useStaffWorkflow()
+  return programmeId => applications.filter(application => application.programmeId === programmeId)
+}
+
+export function useProgrammeAssignments() {
+  return useStaffWorkflow().assignments
 }
