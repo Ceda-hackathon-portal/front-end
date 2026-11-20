@@ -150,7 +150,7 @@ Priority **P0** is what the demo needs: one idea from submission through eligibi
 | P0 | `GET /auth/login?returnTo=/workspace` | Redirects to hosted login, then back to `returnTo` (same-origin paths only) |
 | P0 | `POST /auth/logout` | Ends the session |
 | P0 | `GET /me` | `{ id, name, email, roles: ["applicant"], programmeIds: [] }`, or 401 |
-| P0 | `POST /dev/session` `{ role }` | **Only when `AUTH_ENABLED=false`.** Starts a session as a seeded demo user with that role, so the demo role picker keeps working. Must not exist in production |
+| P0 | `POST /dev/session` `{ role }` | **Only when `AUTH_ENABLED=false`.** Starts a session as a seeded demo user with that role, so the applicant and staff demo sign-ins keep working. An applicant role starts an applicant session and a staff role starts a staff session, never both. Must not exist in production |
 
 ### Public (no sign-in)
 
