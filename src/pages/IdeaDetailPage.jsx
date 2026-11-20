@@ -1,27 +1,30 @@
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, MessageSquareText } from 'lucide-react'
-import WorkspaceLayout from '../components/shared/WorkspaceLayout'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Download, MessageSquareText } from 'lucide-react'
 import StatusBadge from '../components/shared/StatusBadge'
 import { usePortal } from '../context/PortalContext'
 import { stages, themes } from '../data/portal'
 import { displayDate, displayDateTime } from '../utils/portal'
+import { applicationReference, applicationText } from '../utils/applicant'
+
 export default function IdeaDetailPage() {
   const { id } = useParams()
+  const [params] = useSearchParams()
   const { ideas } = usePortal()
-  const idea = ideas.find((item) => item.id === id)
-  if (!idea) return <WorkspaceLayout title="Idea not found." description="This demo idea may belong to a different browser."><Link className="button button-primary" to="/workspace">Back to your workspace</Link></WorkspaceLayout>
+  const idea = ideas.find(item => item.id === id)
+  if (!idea) return <section className="ap-page ap-panel ap-empty"><h2>Application not found.</h2><p>This preview application may belong to a different browser.</p><Link className="ap-button ap-button-primary" to="/workspace/applications">My applications<ArrowRight size={16} /></Link></section>
   const current = stages.indexOf(idea.status)
-  return (
-    <WorkspaceLayout title={idea.title} description={'Demo reference · ' + idea.id}>
-      <Link className="inline-link back-link" to="/workspace"><ArrowLeft size={16} />All submissions</Link>
-      <div className="detail-grid">
-        <div>
-          <section className="panel"><div className="panel-header"><h2>Idea overview</h2><StatusBadge status={idea.status} /></div><p className="muted">{themes.find((theme) => theme.id === idea.theme)?.name} · {displayDate(idea.submittedAt)}</p>{[['The problem', idea.problem], ['The solution', idea.solution], ['The impact', idea.impact], ['Team', idea.team]].map(([title, text]) => <div className="detail-section" key={title}><h3>{title}</h3><p>{text}</p></div>)}</section>
-          <section className="panel"><h2><MessageSquareText size={20} />Feedback & conversation</h2>{idea.feedback.length ? idea.feedback.map((feedback) => <article className="feedback-card" key={feedback.id}><strong>{feedback.author}</strong><small>{displayDateTime(feedback.createdAt)}</small><p>{feedback.message}</p></article>) : <p className="muted">No feedback yet. This is where your evaluation team’s notes will appear.</p>}<p className="notice">Replies, revisions and resubmission will be available only when an authorised reviewer requests a revision. The original version must remain traceable.</p></section>
-          <section className="panel"><h2>Submission history</h2><div className="history-entry"><span className="tag">Version 1</span><div><strong>Initial demo submission</strong><small>{displayDateTime(idea.submittedAt)}</small></div></div><p className="section-note">This is the initial snapshot. A complete event history and version comparisons will be supplied by the future workflow service.</p></section>
-        </div>
-        <aside className="panel status-panel"><span className="eyebrow">Your idea’s journey</span><h2>Step by step.</h2><ol className="status-timeline">{stages.map((stage, index) => <li key={stage} className={index < current ? 'is-done' : index === current ? 'is-current' : ''}><span>{index < current ? <Check size={15} /> : index + 1}</span><div><strong>{stage}</strong><small>{index < current ? 'Complete in sample' : index === current ? 'Current stage' : 'Next stage'}</small></div></li>)}</ol><p className="section-note">Prototype status display. Live stage changes and decision history are not connected.</p></aside>
-      </div>
-    </WorkspaceLayout>
-  )
+  function downloadCopy() {
+    const url = URL.createObjectURL(new Blob([applicationText(idea)], { type: 'text/plain;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = applicationReference(idea) + '.txt'; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+  return <div className="ap-page"><Link className="ap-text-link ap-back-link" to="/workspace/applications"><ArrowLeft size={15} />My applications</Link>
+    {params.get('submitted') === '1' && <section className="ap-receipt" aria-labelledby="receipt-heading"><CheckCircle2 size={34} strokeWidth={1.4} /><div><span className="ap-eyebrow">PREVIEW COMPLETE</span><h2 id="receipt-heading">Application submitted.</h2><p>Saved on this device. Nothing has been sent to CEDA.</p><strong>{applicationReference(idea)}</strong></div><button className="ap-button ap-button-secondary" onClick={downloadCopy}><Download size={16} />Download copy (.txt)</button></section>}
+    <header className="ap-page-intro"><div><span className="ap-eyebrow">{applicationReference(idea)}</span><h2 className="ap-application-title">{idea.title}</h2><p>{themes.find(theme => theme.id === idea.theme)?.name} · {displayDate(idea.submittedAt)}</p></div><StatusBadge status={idea.status} /></header>
+    <div className="ap-detail-grid"><div><section className="ap-panel ap-detail-panel"><div className="ap-section-title"><h2>Your application</h2><button className="ap-text-link" onClick={downloadCopy}><Download size={15} />Download copy</button></div>{[['The problem', idea.problem], ['Your solution', idea.solution], ['The impact', idea.impact], ['Team or organisation', idea.team]].map(([label, value]) => <div className="ap-answer" key={label}><h3>{label}</h3><p>{value}</p></div>)}</section>
+      <section className="ap-panel ap-detail-panel"><div className="ap-section-title"><h2>Feedback</h2><MessageSquareText size={19} strokeWidth={1.4} /></div>{idea.feedback.length ? idea.feedback.map(feedback => <article className="ap-feedback" key={feedback.id}><strong>{feedback.author}</strong><small>{displayDateTime(feedback.createdAt)}</small><p>{feedback.message}</p></article>) : <div className="ap-inline-empty"><p>No feedback yet.</p><span>Example updates will appear here when available.</span></div>}</section></div>
+      <aside className="ap-panel ap-timeline-panel"><span className="ap-eyebrow">APPLICATION PROGRESS</span><h2>Your next step</h2><p>{idea.feedback.length ? 'Read the feedback below your application.' : 'No action is needed in this preview.'}</p><ol className="ap-timeline">{stages.map((stage, index) => <li key={stage} className={index === current ? 'is-current' : index < current ? 'is-done' : ''}><span>{index < current ? <Check size={13} /> : index + 1}</span><div><strong>{stage}</strong><small>{index === 0 ? displayDate(idea.submittedAt) : index === current ? 'Current example stage' : index < current ? 'Earlier example stage' : 'Upcoming stage'}</small></div></li>)}</ol><div className="ap-snapshot"><strong>Version 1</strong><span>{displayDateTime(idea.submittedAt)}</span><p>Your submitted answers are kept as a separate snapshot.</p></div></aside>
+    </div>
+  </div>
 }
