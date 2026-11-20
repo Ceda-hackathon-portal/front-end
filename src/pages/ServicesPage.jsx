@@ -5,7 +5,6 @@ export const portalServices = [
   { name: 'My submissions', to: '/login?redirect=%2Fworkspace' },
   { name: 'Programmes', to: '/challenges' },
   { name: 'Submission guide', to: '/how-it-works' },
-  { name: 'Review workspace', to: '/login' },
   { name: 'Help', to: '/help' },
 ]
 export default function ServicesPage() {
