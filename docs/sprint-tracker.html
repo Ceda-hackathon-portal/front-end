@@ -1,0 +1,464 @@
+<title>CEDA Portal Sprint</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a hackathon run sheet. Countdown up top, then a lane-by-day grid (people down, days across). */
+:root {
+  --bg: #f2f4f8;
+  --surface: #ffffff;
+  --ink: #121c2e;
+  --muted: #5a6476;
+  --line: #d8dde6;
+  --accent: #2346a0;
+  --accent-soft: #e4e9f7;
+  --today: #f6f8fd;
+  --lane-future: #2346a0;
+  --lane-shadrack: #0f766e;
+  --lane-both: #6b5aa6;
+  --done: #2b7a4b;
+  --done-soft: #e1f1e7;
+  --warn: #8f5304;
+  --warn-soft: #fbefd6;
+  --late: #b42318;
+  --late-soft: #fbe3df;
+  --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d121b; --surface: #151c28; --ink: #e7ecf4; --muted: #98a3b6; --line: #273244;
+    --accent: #93acee; --accent-soft: #1c2945; --today: #18213a;
+    --lane-future: #93acee; --lane-shadrack: #5ec4b6; --lane-both: #b3a5e8;
+    --done: #6cc497; --done-soft: #15301f; --warn: #e6ae55; --warn-soft: #33260f;
+    --late: #f0877c; --late-soft: #3b1a17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d121b; --surface: #151c28; --ink: #e7ecf4; --muted: #98a3b6; --line: #273244;
+  --accent: #93acee; --accent-soft: #1c2945; --today: #18213a;
+  --lane-future: #93acee; --lane-shadrack: #5ec4b6; --lane-both: #b3a5e8;
+  --done: #6cc497; --done-soft: #15301f; --warn: #e6ae55; --warn-soft: #33260f;
+  --late: #f0877c; --late-soft: #3b1a17;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Masthead */
+.masthead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 40px; align-items: end; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.masthead h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5vw, 52px); line-height: 1; letter-spacing: -.02em; margin-top: 8px; }
+.lede { color: var(--muted); max-width: 60ch; margin: 10px 0 0; }
+.clock { text-align: right; display: grid; gap: 6px; justify-items: end; }
+.countdown { font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; font-size: clamp(40px, 7vw, 76px); line-height: .95; letter-spacing: -.03em; color: var(--ink); white-space: nowrap; }
+.countdown small { font-size: .38em; font-weight: 700; color: var(--muted); margin: 0 .35em 0 .08em; letter-spacing: 0; }
+.countdown.passed { color: var(--late); font-size: clamp(28px, 4vw, 40px); }
+.deadline-line { font-size: 13px; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.deadline-line strong { color: var(--ink); font-weight: 600; font-family: var(--mono); font-size: 12.5px; }
+.linkbtn { background: none; border: 0; padding: 2px 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
+.deadline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.deadline-form input { font: 13px var(--mono); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+
+/* People summary */
+.people { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.person { background: var(--surface); padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
+.person-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; background: var(--lane); }
+.who h2 { font-family: var(--display); font-size: 19px; font-weight: 700; }
+.who span { color: var(--muted); font-size: 13px; }
+.count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.count b { color: var(--ink); font-weight: 500; }
+.bar { height: 6px; background: var(--accent-soft); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--lane); border-radius: 99px; transition: width .4s ease; }
+.next { font-size: 13px; color: var(--muted); min-height: 2.6em; }
+.next b { color: var(--ink); font-weight: 600; }
+.next .late { color: var(--late); font-weight: 600; }
+
+/* Toolbar */
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.sync { display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync[data-state="live"] .dot { background: var(--done); }
+.sync[data-state="warn"] .dot { background: var(--warn); }
+.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); }
+.toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+
+/* Board */
+.board { display: grid; grid-template-columns: 170px repeat(3, minmax(0, 1fr)); background: var(--line); gap: 1px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.colhead { background: var(--surface); padding: 12px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.colhead h3, .daylabel { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+.colhead.today, .cell.today { background: var(--today); }
+.tag-today { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--accent); }
+.corner { background: var(--surface); }
+.lane { background: var(--surface); padding: 16px; display: grid; align-content: start; gap: 4px; border-top: 3px solid var(--lane); }
+.lane h3 { font-family: var(--display); font-size: 17px; font-weight: 700; }
+.lane p { margin: 0; color: var(--muted); font-size: 13px; }
+.lane .count { margin-top: 6px; }
+.cell { background: var(--surface); padding: 6px 0; min-width: 0; display: grid; align-content: start; }
+.daylabel { display: none; padding: 10px 16px 4px; }
+.empty { color: var(--muted); font-size: 13px; padding: 10px 16px; }
+
+.item { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 10px 16px; cursor: pointer; align-items: start; }
+.item + .item { border-top: 1px solid var(--line); }
+.item:hover { background: var(--accent-soft); }
+.item input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--done); cursor: pointer; }
+.item input:disabled { cursor: not-allowed; }
+.row1 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.title { font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+.due { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dw { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
+.chip { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
+.chip.late { background: var(--late-soft); color: var(--late); }
+.chip.soon { background: var(--warn-soft); color: var(--warn); }
+.chip.done { background: var(--done-soft); color: var(--done); }
+.by { color: var(--muted); }
+.item.is-done .title { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.item.is-done .dw { display: none; }
+.item.is-late .due { color: var(--late); font-weight: 500; }
+.board.hide-done .item.is-done { display: none; }
+
+.foot { font-size: 13px; color: var(--muted); max-width: 70ch; }
+.foot code { font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 900px) {
+  .masthead { grid-template-columns: minmax(0, 1fr); }
+  .clock { text-align: left; justify-items: start; }
+  .deadline-line, .deadline-form { justify-content: flex-start; }
+  .people { grid-template-columns: minmax(0, 1fr); }
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .corner, .colhead { display: none; }
+  .daylabel { display: flex; justify-content: space-between; align-items: baseline; }
+  .lane { margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Blue Hogs Inc. · CEDA Innovation Portal Hackathon</div>
+      <h1>Final sprint: portal and landing page</h1>
+      <p class="lede">Every deliverable from now to submission, with the time it is due. Tick it when the "done when" line is true, not before.</p>
+    </div>
+    <div class="clock">
+      <div class="countdown" id="countdown" aria-live="off">--</div>
+      <div class="deadline-line" id="deadline-line"></div>
+    </div>
+  </header>
+
+  <section class="people" id="people" aria-label="Progress by person"></section>
+
+  <div class="toolbar">
+    <div class="sync" id="sync" data-state="idle"><span class="dot"></span><span id="sync-text">Connecting to shared ticks…</span></div>
+    <div class="legend">
+      <label class="toggle" for="hide-done"><input type="checkbox" id="hide-done"> Hide finished items</label>
+    </div>
+  </div>
+
+  <section class="board" id="board" aria-label="Deliverables by person and day"></section>
+
+  <p class="foot">Times are Botswana time (CAT). "Due soon" means less than three hours left. Each tick records who ticked it and when, so the board doubles as the team's log for the judges.</p>
+</div>
+
+<script>
+(() => {
+  const TZ = "Africa/Gaborone";
+  const DEFAULT_DEADLINE = "2026-11-22T23:59:00+02:00";
+  const DAYS = ["2026-11-20", "2026-11-21", "2026-11-22"];
+  const LANES = [
+    { id: "future", name: "Future", role: "Portal UI and applicant journey" },
+    { id: "shadrack", name: "Shadrack", role: "Landing page visuals" },
+    { id: "both", name: "Together", role: "Handoffs, testing and demo" },
+  ];
+  const ITEMS = [
+    // Future: portal UI
+    { id: "f-model", lane: "future", due: "2026-11-20T18:00:00+02:00", title: "Roles, stages and criteria match the proposal", dw: "7 roles, 6 stages (Submitted to Award) and 5 weighted criteria with minimums in the shared data." },
+    { id: "f-tooling", lane: "future", due: "2026-11-20T21:00:00+02:00", title: "TypeScript, ESLint and Vitest set up", dw: "Lint, typecheck and tests run in CI and pass on main." },
+    { id: "f-components", lane: "future", due: "2026-11-20T23:59:00+02:00", title: "Core form components", dw: "Text field, radio group, error summary, status tag and action banner, all keyboard-usable." },
+    { id: "f-programme", lane: "future", due: "2026-11-21T10:00:00+02:00", title: "Programme page: Before you start", dw: "Who can apply, key dates, every document and where to get it, the 5 criteria with weights." },
+    { id: "f-eligibility", lane: "future", due: "2026-11-21T13:00:00+02:00", title: "Eligibility check", dw: "One question per screen. Youth ownership calculated from shareholders. Met, not met or needs evidence per rule." },
+    { id: "f-auth", lane: "future", due: "2026-11-21T16:00:00+02:00", title: "Sign in and register on the real API", dw: "Session, CSRF and sign-out through /api/v1/auth. Eligibility answers carry over." },
+    { id: "f-form", lane: "future", due: "2026-11-21T20:00:00+02:00", title: "Application in five sections", dw: "Task list with save status. Resumes on another visit. Errors never clear answers." },
+    { id: "f-submit", lane: "future", due: "2026-11-21T23:59:00+02:00", title: "Check your answers and receipt", dw: "One summary page with Change links. Submit returns a reference like CEDA-YIF-2026-00412." },
+    { id: "f-dashboard", lane: "future", due: "2026-11-22T10:00:00+02:00", title: "Applicant dashboard", dw: "Action needed at the top, then applications, drafts, profile status and messages." },
+    { id: "f-tracker", lane: "future", due: "2026-11-22T12:00:00+02:00", title: "Stage tracker", dw: "Done, in progress, waiting for you and coming up, each with its date." },
+    { id: "f-outcome", lane: "future", due: "2026-11-22T14:00:00+02:00", title: "Outcome and feedback", dw: "Reason, feedback per criterion, request a review and a next step." },
+    { id: "f-e2e", lane: "future", due: "2026-11-22T16:00:00+02:00", title: "Applicant journey test in CI", dw: "Playwright runs eligibility through to the receipt on every pull request." },
+    // Shadrack: landing page visuals
+    { id: "s-direction", lane: "shadrack", due: "2026-11-20T18:00:00+02:00", title: "Landing page direction agreed", dw: "Palette, type and hero reference signed off with Future so landing and portal match." },
+    { id: "s-hero", lane: "shadrack", due: "2026-11-20T23:59:00+02:00", title: "Hero section", dw: "Headline, one-line promise and a Check if you qualify button. Works at 375px wide." },
+    { id: "s-how", lane: "shadrack", due: "2026-11-21T11:00:00+02:00", title: "How it works: Apply, Check, Evaluate, Decide, Support", dw: "The proposal's five steps, one plain line each." },
+    { id: "s-programmes", lane: "shadrack", due: "2026-11-21T14:00:00+02:00", title: "Open programmes section", dw: "Cards with closing date and days left, each linking to its programme page." },
+    { id: "s-trust", lane: "shadrack", due: "2026-11-21T17:00:00+02:00", title: "Fair by design section", dw: "Conflicts declared first, every applicant gets a reason, ideas stay in Botswana." },
+    { id: "s-nav", lane: "shadrack", due: "2026-11-21T21:00:00+02:00", title: "Navigation and footer final", dw: "CEDA logo, help, privacy and sign in. No leftover template links." },
+    { id: "s-mobile", lane: "shadrack", due: "2026-11-22T10:00:00+02:00", title: "Phone pass at 375px", dw: "Every section checked on a real phone. No sideways scrolling." },
+    { id: "s-images", lane: "shadrack", due: "2026-11-22T12:00:00+02:00", title: "Images compressed", dw: "ceda-hero.png and ceda-innovation.png are 1.7 MB each. Get each under 300 KB as WebP, with alt text." },
+    { id: "s-a11y", lane: "shadrack", due: "2026-11-22T14:00:00+02:00", title: "Accessibility pass", dw: "AA contrast, visible focus, one h1 per page, alt text on every image." },
+    { id: "s-merge", lane: "shadrack", due: "2026-11-22T16:00:00+02:00", title: "Landing page merged", dw: "Pull request into main, reviewed by Future, CI green." },
+    // Together
+    { id: "b-handoff", lane: "both", due: "2026-11-21T18:00:00+02:00", title: "Landing button opens the eligibility check", dw: "The hero button leads straight into the portal flow. No dead links." },
+    { id: "b-usability", lane: "both", due: "2026-11-22T17:00:00+02:00", title: "Three people try it cold", dw: "Three people who haven't seen the portal apply without help. Fix whatever stops them." },
+    { id: "b-demo", lane: "both", due: "2026-11-22T20:00:00+02:00", title: "Demo run-through", dw: "One idea from submission to decision and feedback, as page 2 of the proposal promises." },
+    { id: "b-deploy", lane: "both", due: "2026-11-22T22:00:00+02:00", title: "Live on AWS", dw: "Production URL works and deep links survive a refresh." },
+  ];
+
+  const S = { ticks: {}, deadline: DEFAULT_DEADLINE, mode: "loading", me: null, canWrite: true, pending: new Set(), names: {}, editingDeadline: false, synced: false };
+  let db = null, user = null;
+  const LOCAL_KEY = "ceda-sprint-ticks";
+  const PREF_KEY = "ceda-sprint-hide-done";
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtDayKey = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  const fmtTime = (iso) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+  const fmtDay = (key) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(new Date(key + "T12:00:00+02:00"));
+  const fmtStamp = (iso) => fmtDay(fmtDayKey(iso)) + ", " + fmtTime(iso);
+
+  const isDone = (id) => Boolean(S.ticks[id] && S.ticks[id].done);
+  function status(item, now) {
+    if (isDone(item.id)) return "done";
+    const left = Date.parse(item.due) - now;
+    if (left < 0) return "late";
+    if (left < 3 * 3600 * 1000) return "soon";
+    return "open";
+  }
+  const editable = () => (S.mode === "live" && S.canWrite) || S.mode === "local";
+
+  function renderClock(now) {
+    const ms = Date.parse(S.deadline) - now;
+    const el = $("countdown");
+    if (ms <= 0) {
+      el.className = "countdown passed";
+      el.textContent = "Deadline passed";
+    } else {
+      const d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000) % 24, m = Math.floor(ms / 60000) % 60;
+      el.className = "countdown";
+      el.innerHTML = (d ? d + "<small>d</small>" : "") + h + "<small>h</small>" + String(m).padStart(2, "0") + "<small>m left</small>";
+    }
+    const line = $("deadline-line");
+    if (S.editingDeadline) {
+      const local = fmtDayKey(S.deadline) + "T" + fmtTime(S.deadline);
+      line.innerHTML = '<form class="deadline-form" id="deadline-form"><label for="deadline-input" class="eyebrow">New deadline (CAT)</label><input type="datetime-local" id="deadline-input" value="' + esc(local) + '" required><button class="btn" type="submit">Save</button><button class="btn quiet" type="button" id="deadline-cancel">Cancel</button></form>';
+    } else {
+      line.innerHTML = "<span>Submission deadline</span><strong>" + esc(fmtStamp(S.deadline)) + " CAT</strong>" + (S.mode === "live" && S.canWrite ? '<button class="linkbtn" type="button" id="deadline-edit">Change</button>' : "");
+    }
+  }
+
+  function renderPeople(now) {
+    $("people").innerHTML = LANES.map((lane) => {
+      const items = ITEMS.filter((i) => i.lane === lane.id);
+      const done = items.filter((i) => isDone(i.id)).length;
+      const pending = items.filter((i) => !isDone(i.id)).sort((a, b) => Date.parse(a.due) - Date.parse(b.due));
+      const next = pending[0];
+      let nextHtml = "<b>All done.</b>";
+      if (next) {
+        const late = status(next, now) === "late";
+        nextHtml = "Next: <b>" + esc(next.title) + "</b> · " + (late ? '<span class="late">overdue since ' : "due ") + esc(fmtStamp(next.due)) + (late ? "</span>" : "");
+      }
+      return '<article class="person" style="--lane: var(--lane-' + lane.id + ')">' +
+        '<div class="person-head"><div class="who"><span class="swatch"></span><div><h2>' + esc(lane.name) + "</h2><span>" + esc(lane.role) + '</span></div></div><span class="count"><b>' + done + "</b> / " + items.length + "</span></div>" +
+        '<div class="bar" role="progressbar" aria-label="' + esc(lane.name) + ' progress" aria-valuemin="0" aria-valuemax="' + items.length + '" aria-valuenow="' + done + '"><i style="width:' + (items.length ? (done / items.length) * 100 : 0) + '%"></i></div>' +
+        '<div class="next">' + nextHtml + "</div></article>";
+    }).join("");
+  }
+
+  function itemHtml(item, now) {
+    const st = status(item, now);
+    const tick = S.ticks[item.id];
+    const disabled = !editable() || S.pending.has(item.id);
+    let meta = "";
+    if (st === "late") meta = '<span class="chip late">Overdue</span>';
+    else if (st === "soon") meta = '<span class="chip soon">Due soon</span>';
+    if (st === "done" && tick) {
+      const who = tick.by && S.names[tick.by] ? S.names[tick.by] : "";
+      meta = '<span class="chip done">Done</span>' + (tick.at ? '<span class="by" data-by="' + esc(tick.by || "") + '" data-at="' + esc(tick.at) + '">' + esc((who ? "Ticked by " + who + ", " : "Ticked ") + fmtStamp(tick.at)) + "</span>" : "");
+    }
+    return '<label class="item is-' + st + '" for="t-' + item.id + '">' +
+      '<input type="checkbox" id="t-' + item.id + '" data-id="' + item.id + '"' + (st === "done" ? " checked" : "") + (disabled ? " disabled" : "") + ">" +
+      '<span><span class="row1"><span class="title">' + esc(item.title) + '</span><time class="due" datetime="' + item.due + '">' + fmtTime(item.due) + '</time></span><span class="dw">Done when: ' + esc(item.dw) + "</span>" +
+      (meta ? '<span class="meta">' + meta + "</span>" : "") + "</span></label>";
+  }
+
+  function renderBoard(now) {
+    const todayKey = fmtDayKey(new Date(now).toISOString());
+    let html = '<div class="corner"></div>' + DAYS.map((d) => '<div class="colhead' + (d === todayKey ? " today" : "") + '"><h3>' + esc(fmtDay(d)) + "</h3>" + (d === todayKey ? '<span class="tag-today">Today</span>' : "") + "</div>").join("");
+    for (const lane of LANES) {
+      const items = ITEMS.filter((i) => i.lane === lane.id);
+      const done = items.filter((i) => isDone(i.id)).length;
+      html += '<div class="lane" style="--lane: var(--lane-' + lane.id + ')"><h3>' + esc(lane.name) + "</h3><p>" + esc(lane.role) + '</p><span class="count"><b>' + done + "</b> / " + items.length + " done</span></div>";
+      for (const d of DAYS) {
+        const dayItems = items.filter((i) => fmtDayKey(i.due) === d).sort((a, b) => Date.parse(a.due) - Date.parse(b.due));
+        const today = d === todayKey;
+        html += '<div class="cell' + (today ? " today" : "") + '"><div class="daylabel"><span>' + esc(fmtDay(d)) + "</span>" + (today ? '<span class="tag-today">Today</span>' : "") + "</div>" +
+          (dayItems.length ? dayItems.map((i) => itemHtml(i, now)).join("") : '<div class="empty">Nothing due.</div>') + "</div>";
+      }
+    }
+    const focusedId = document.activeElement && document.activeElement.id;
+    $("board").innerHTML = html;
+    if (focusedId && focusedId.startsWith("t-")) { const el = $(focusedId); if (el) el.focus(); }
+  }
+
+  function render() {
+    const now = Date.now();
+    renderClock(now);
+    renderPeople(now);
+    renderBoard(now);
+    fillNames();
+  }
+
+  async function fillNames() {
+    if (!user) return;
+    const ids = [...new Set(Object.values(S.ticks).map((t) => t && t.by).filter(Boolean))];
+    if (!ids.length) return;
+    const ps = await user.profiles(ids);
+    let changed = false;
+    for (const id of ids) {
+      const name = (ps[id] && ps[id].name) || "";
+      if (name && S.names[id] !== name) { S.names[id] = name; changed = true; }
+    }
+    if (!changed) return;
+    document.querySelectorAll("[data-by]").forEach((el) => {
+      const name = S.names[el.dataset.by];
+      el.textContent = (name ? "Ticked by " + name + ", " : "Ticked ") + fmtStamp(el.dataset.at);
+    });
+  }
+
+  function setSync(state, text) {
+    $("sync").dataset.state = state;
+    $("sync-text").textContent = text;
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(S.ticks)); } catch (e) { /* storage unavailable */ }
+  }
+  function loadLocal() {
+    try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"); if (v && typeof v === "object") S.ticks = v; } catch (e) { /* ignore */ }
+  }
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function writeTick(id, body) {
+    try { await db.doc("ticks/" + id).set(body); }
+    catch (e) {
+      if (e && e.code === "unavailable") { await sleep(400 + Math.random() * 600); await db.doc("ticks/" + id).set(body); }
+      else throw e;
+    }
+  }
+
+  async function toggle(id, checked) {
+    if (S.mode === "local") {
+      S.ticks[id] = checked ? { done: true, at: new Date().toISOString() } : { done: false };
+      saveLocal(); render(); return;
+    }
+    if (!editable() || S.pending.has(id)) { render(); return; }
+    const prev = S.ticks[id];
+    const body = { done: checked, by: S.me, at: new Date().toISOString() };
+    S.pending.add(id);
+    S.ticks[id] = body;
+    render();
+    try { await writeTick(id, body); }
+    catch (e) {
+      S.ticks[id] = prev;
+      if (e && e.code === "invalid_argument") { S.canWrite = false; setSync("warn", "View only. Ask Future for Contributor access to tick items."); }
+      else if (e && e.code === "quota_exceeded") setSync("warn", "The shared store is full, so this tick was not saved.");
+      else setSync("warn", "That tick didn't save. Check your connection and tick it again.");
+    } finally { S.pending.delete(id); render(); }
+  }
+
+  async function saveDeadline(value) {
+    const iso = value.length === 16 ? value + ":00+02:00" : value + "+02:00";
+    if (Number.isNaN(Date.parse(iso))) return;
+    const prev = S.deadline;
+    S.deadline = iso; S.editingDeadline = false; render();
+    try { await db.doc("settings/plan").set({ deadline: iso }); }
+    catch (e) { S.deadline = prev; setSync("warn", "The new deadline didn't save. Try again."); render(); }
+  }
+
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t && t.dataset && t.dataset.id) toggle(t.dataset.id, t.checked);
+    if (t && t.id === "hide-done") {
+      $("board").classList.toggle("hide-done", t.checked);
+      try { localStorage.setItem(PREF_KEY, t.checked ? "1" : "0"); } catch (err) { /* ignore */ }
+    }
+  });
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t && t.id === "deadline-edit") { S.editingDeadline = true; renderClock(Date.now()); const i = $("deadline-input"); if (i) i.focus(); }
+    if (t && t.id === "deadline-cancel") { S.editingDeadline = false; renderClock(Date.now()); }
+  });
+  document.addEventListener("submit", (e) => {
+    if (e.target && e.target.id === "deadline-form") { e.preventDefault(); saveDeadline($("deadline-input").value); }
+  });
+
+  try { if (localStorage.getItem(PREF_KEY) === "1") { $("hide-done").checked = true; $("board").classList.add("hide-done"); } } catch (e) { /* ignore */ }
+
+  render();
+  setInterval(() => { if (!S.editingDeadline) render(); else { renderPeople(Date.now()); renderBoard(Date.now()); } }, 30000);
+
+  async function start() {
+    const claude = window.claude;
+    if (!claude || typeof claude.use !== "function") { goLocal(); return; }
+    [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!db) { goLocal(); return; }
+    if (user) {
+      S.me = await user.id();
+      const w = await user.can("data.write");
+      if (w === false) S.canWrite = false;
+    }
+    S.mode = "live";
+    setSync("idle", "Connecting to shared ticks…");
+    const timer = setTimeout(() => { if (!S.synced) setSync("warn", "Can't reach the shared ticks yet. Showing what has loaded."); }, 10000);
+    db.collection("ticks").onSnapshot((snap) => {
+      const next = {};
+      snap.docs.forEach((d) => { const v = d.data(); if (v && typeof v === "object") next[d.id] = v; });
+      for (const id of S.pending) next[id] = S.ticks[id];
+      S.ticks = next;
+      if (!snap.metadata.fromCache && !S.synced) {
+        S.synced = true; clearTimeout(timer);
+        setSync(S.canWrite ? "live" : "warn", S.canWrite ? "Live. Ticks are shared with the team." : "View only. Ask Future for Contributor access to tick items.");
+      }
+      render();
+    }, (err) => {
+      clearTimeout(timer);
+      setSync("warn", err && err.code === "revoked" ? "Shared ticks are no longer available here." : "Lost the connection to shared ticks. Reopen the page to reconnect.");
+    });
+    db.doc("settings/plan").onSnapshot((d) => {
+      const v = d.exists ? d.data() : null;
+      S.deadline = v && typeof v.deadline === "string" && !Number.isNaN(Date.parse(v.deadline)) ? v.deadline : DEFAULT_DEADLINE;
+      if (!S.editingDeadline) renderClock(Date.now());
+    }, () => {});
+  }
+
+  function goLocal() {
+    S.mode = "local";
+    loadLocal();
+    setSync("warn", "Saved on this device only. Open it on claude.ai to share ticks with the team.");
+    render();
+  }
+
+  start().catch(goLocal);
+})();
+</script>
