@@ -1,6 +1,6 @@
 # CEDA Innovation Portal: front-end
 
-Web client for the CEDA Innovation Portal hackathon. React + Vite single-page app, hosted on AWS (S3 + CloudFront).
+Web client for the CEDA Innovation Portal hackathon. React + Vite single-page app, prepared for AWS hosting with S3 and CloudFront.
 
 Related repositories:
 
@@ -8,6 +8,8 @@ Related repositories:
 - [infra--devops](https://github.com/Ceda-hackathon-portal/infra--devops): Terraform for all AWS resources
 
 ## Local development
+
+Working directory: `C:\Users\user\Documents\BAC\Ceda-hackathon-portal\front-end`.
 
 Requires Node.js 22 (see `.nvmrc`).
 
@@ -17,7 +19,17 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-`VITE_API_URL` in `.env.local` points the app at the API. Vite inlines `VITE_*` values into the public bundle, so never put secrets in them.
+`VITE_API_URL` in `.env.local` is the public API base URL reserved for frontend integration. The current prototype uses an in-memory demo identity and browser-local draft/submission data; it does not yet call the API. Vite inlines `VITE_*` values into the public bundle, so never put secrets in them.
+
+## Applicant portal preview
+
+Open `/portal` on the local Vite URL (for example `http://127.0.0.1:5174/portal`). Choose **Open applicant preview** to try an applicant workspace without using real credentials.
+
+The applicant shell has its own compact header and navigation. It includes application search, local drafts, a four-step submission form, answer review, a local receipt/download, example feedback, programme themes and guidance. Every applicant page uses the shared full-width photo hero, with header controls over the image and plain page titles. The home and cattle images were supplied; three additional photographs and their provenance are listed in [Applicant image sources](docs/APPLICANT_IMAGE_SOURCES.md).
+
+Drafts and submissions use this browser's local storage. Demo identity ends on refresh; use the preview button again to return to saved work. These are not authenticated or server-owned records. No application or document is sent to CEDA. Programme eligibility, verified profiles, uploads and real notifications remain separate integration work.
+
+Run `npm test` for the focused application validation and return-route checks, and `npm run build` for the frontend build.
 
 ## Branching and reviews
 
@@ -50,11 +62,10 @@ Create a GitHub environment named `production` (Settings → Environments) and a
 
 CloudFront must return `/index.html` with status 200 for 403 and 404 responses, so deep links such as `/workspace` survive a page refresh.
 
-## Migrating the existing prototype
+## Frontend scope
 
-The Phase 1 prototype lives in the earlier `CedaHackathon` repository. To bring it in:
+The CEDA frontend is migrated into this organisation repository. Run development commands here and use `https://github.com/Ceda-hackathon-portal/front-end.git` as the remote.
 
-1. Copy `src/`, `public/`, `index.html`, `package.json`, `package-lock.json`, `vite.config.js`, `postcss.config.js` and `tailwind.config.js`.
-2. Do not copy `node_modules/`, `dist/`, `.qa/` or `vercel.json` (hosting is AWS).
-3. Its `lint` script calls ESLint, which is not installed. Either add ESLint with an `eslint.config.js` (CI then runs it automatically) or remove the script.
-4. Run `npm ci` and `npm run build` locally, then open a PR. CI starts building as soon as `package-lock.json` exists.
+Application source is in `src/`, static assets in `public/`, and the applicant/workspace implementation map in `docs/FRONTEND_ROADMAP.md`. The latest CEDA hero, navigation, footer and typography updates are included.
+
+Backend implementation and infrastructure belong to the sibling repositories listed above. The frontend does not contain server code, database migrations or infrastructure configuration. Keep `node_modules/`, `dist/`, `.qa/`, local environment files and credentials out of Git.
