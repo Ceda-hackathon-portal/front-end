@@ -1,184 +1,725 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, CircleHelp, Save } from 'lucide-react'
-import { usePortal } from '../context/PortalContext'
-import { themes } from '../data/portal'
-import { applicationFields, applicationSteps, draftProgress, resumeStep, validateIdea } from '../utils/applicant'
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Check, Plus, Save, Trash2 } from "lucide-react";
+import { usePortal } from "../context/PortalContext";
+import { themes } from "../data/portal";
+import { applicationFields } from "../utils/applicant";
+import {
+  budgetTotal,
+  firstUnfinishedSection,
+  programme,
+  sectionErrors,
+  sections,
+  workflowProgress,
+} from "../utils/applicantWorkflow";
+import ProfileFields from "../components/applicant/ProfileFields";
+import ApplicantDocuments, {
+  DocumentList,
+} from "../components/applicant/ApplicantDocuments";
 
 const hints = {
-  title: 'A short, descriptive name.',
-  theme: 'Choose the closest theme.',
-  team: 'Your team or organisation name.',
-  problem: 'What needs to change, and who is affected?',
-  solution: 'How would your idea solve the problem?',
-  impact: 'Who benefits, and how would you measure the difference?',
-}
-const introductions = [
-  'All fields are required.',
-  'Describe the problem and your solution.',
-  'Describe the expected impact.',
-  'Check your answers before submitting.',
-]
+  title: "A short, descriptive name.",
+  theme: "Choose the closest theme.",
+  team: "The team working on this idea.",
+  problem: "What needs to change, and who is affected?",
+  solution: "How would your idea solve the problem?",
+  impact: "Who benefits, and how will you measure the difference?",
+};
+const money = (value) =>
+  new Intl.NumberFormat("en-BW", { style: "currency", currency: "BWP" }).format(
+    value,
+  );
 
 export default function SubmitIdeaPage() {
-  const { draft, saveDraft, submitDemo, storageWarning } = usePortal()
-  const [params] = useSearchParams()
-  const [form, setForm] = useState(() => ({ ...draft, theme: draft.theme || themes.find(theme => theme.id === params.get('theme'))?.id || '' }))
-  const [step, setStep] = useState(() => resumeStep(form))
-  const [errors, setErrors] = useState({})
-  const [consent, setConsent] = useState(false)
-  const [message, setMessage] = useState('')
-  const [saved, setSaved] = useState(Boolean(draftProgress(draft).completed))
-  const [busy, setBusy] = useState(false)
-  const submitting = useRef(false)
-  const stepHeading = useRef(null)
-  const previousStep = useRef(step)
-  const navigate = useNavigate()
-  const progress = draftProgress(form)
-
-  useEffect(() => {
-    if (!stepHeading.current) return
-    stepHeading.current.focus({ preventScroll: true })
-    if (previousStep.current !== step) stepHeading.current.scrollIntoView({ block: 'start', behavior: 'instant' })
-    previousStep.current = step
-  }, [step])
-
-  function update(event) {
-    const next = { ...form, [event.target.name]: event.target.value }
-    setForm(next)
-    setErrors(previous => ({ ...previous, [event.target.name]: undefined }))
-    setSaved(saveDraft(next))
-    setMessage('')
-  }
-
-  function goToStep(index) {
-    setStep(index)
-    setErrors({})
-    setMessage('')
-  }
-
-  function continueForm(event) {
-    event.preventDefault()
-    const nextErrors = validateIdea(form, step === 3 ? undefined : applicationSteps[step].fields)
-    if (step === 3 && !consent) nextErrors.consent = 'Confirm that you are using fictional information.'
-    setErrors(nextErrors)
-    const firstError = Object.keys(nextErrors)[0]
-    if (firstError) {
-      const targetStep = applicationSteps.findIndex(item => item.fields.includes(firstError))
-      if (targetStep >= 0) setStep(targetStep)
-      requestAnimationFrame(() => document.getElementById('application-' + firstError)?.focus())
-      return
-    }
-    if (step < 3) { setStep(step + 1); return }
-    if (submitting.current) return
-    submitting.current = true
-    setBusy(true)
+  const { drafts, createDraft } = usePortal();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const requestedId = params.get("draft");
+  const draft = drafts.find((item) => item.id === requestedId);
+  const requestedTheme = params.get("theme") || "";
+  if (draft) return <ApplicationForm key={draft.id} draft={draft} />;
+  function start() {
     try {
-      navigate('/workspace/ideas/' + submitDemo(form) + '?submitted=1')
-    } catch (error) {
-      setMessage(error.message)
-      submitting.current = false
-      setBusy(false)
+      const id = createDraft(requestedTheme);
+      navigate("/workspace/new?draft=" + id, { replace: true });
+    } catch (failure) {
+      setError(failure.message);
     }
   }
-
-  function renderField(key) {
-    const field = applicationFields.find(item => item.key === key)
-    const common = {
-      id: 'application-' + key, name: key, value: form[key], onChange: update, required: true,
-      'aria-invalid': Boolean(errors[key]),
-      'aria-describedby': `hint-${key}` + (errors[key] ? ` error-${key}` : ''),
-    }
-    return (
-      <div className={'ap-field ap-field-' + key} key={key}>
-        <label htmlFor={common.id}>{field.label}</label>
-        <p id={'hint-' + key}>{hints[key]}</p>
-        {key === 'theme' ? (
-          <select {...common}><option value="">Select a theme</option>{themes.map(theme => <option value={theme.id} key={theme.id}>{theme.name}</option>)}</select>
-        ) : ['title', 'team'].includes(key) ? (
-          <input {...common} maxLength={field.max} autoComplete="off" />
-        ) : (
-          <textarea {...common} maxLength={field.max} rows={key === 'solution' ? 7 : 6} />
+  return (
+    <div className="ap-page">
+      <section className="ap-panel ap-draft-picker">
+        <h2>{requestedId ? "Draft not found" : "Your application"}</h2>
+        <p>
+          {requestedId
+            ? "It may already have been submitted. Check My applications."
+            : "Start a separate draft or continue saved work. Existing answers and files are kept."}
+        </p>
+        {requestedTheme && (
+          <p className="ap-inline-note">
+            Selected theme:{" "}
+            {themes.find((theme) => theme.id === requestedTheme)?.name ||
+              "Unavailable"}
+          </p>
         )}
-        {errors[key] && <span className="ap-field-error" id={'error-' + key}>{errors[key]}</span>}
-        {field.max && <span className="ap-field-count">{form[key].length.toLocaleString()} / {field.max.toLocaleString()}</span>}
-      </div>
-    )
-  }
+        {drafts.map((item) => (
+          <Link
+            className="ap-saved-draft-row"
+            key={item.id}
+            to={"/workspace/new?draft=" + item.id}
+          >
+            <span>
+              <strong>{item.title || "Untitled application"}</strong>
+              <small>
+                {themes.find((theme) => theme.id === item.theme)?.name ||
+                  "Theme not selected"}
+              </small>
+            </span>
+            <span>
+              Continue
+              <ArrowRight size={16} />
+            </span>
+          </Link>
+        ))}
+        {error && (
+          <p role="alert" className="ap-form-alert">
+            {error}
+          </p>
+        )}
+        <div className="ap-draft-picker-actions">
+          <button
+            className="ap-button ap-button-primary"
+            type="button"
+            onClick={start}
+          >
+            Start a new application
+            <Plus size={16} />
+          </button>
+          <Link className="ap-text-link" to="/portal/eligibility">
+            Check eligibility
+            <ArrowRight size={15} />
+          </Link>
+          <Link className="ap-text-link" to="/workspace/applications">
+            My applications
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
 
+function ApplicationForm({ draft }) {
+  const {
+    profile,
+    documents,
+    ideas,
+    saveDraft,
+    submitApplication,
+    storageWarning,
+    documentsBusy,
+  } = usePortal();
+  const [form, setForm] = useState(() => structuredClone(draft));
+  const [person, setPerson] = useState(() => structuredClone(profile));
+  const [step, setStep] = useState(() =>
+    firstUnfinishedSection(draft, profile, documents),
+  );
+  const [errors, setErrors] = useState({});
+  const [confirmed, setConfirmed] = useState(false);
+  const [message, setMessage] = useState("");
+  const [saved, setSaved] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const submissionLock = useRef(false);
+  const heading = useRef(null);
+  const previousStep = useRef(step);
+  const navigate = useNavigate();
+  const progress = workflowProgress(form, person, documents);
+  const source = ideas.find((idea) => idea.id === form.revisionOf);
+  useEffect(() => {
+    setForm((current) => ({ ...current, documentIds: draft.documentIds }));
+  }, [draft.documentIds]);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+    if (previousStep.current !== step)
+      heading.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    previousStep.current = step;
+  }, [step]);
+  function update(next, nextPerson = person) {
+    setForm(next);
+    setPerson(nextPerson);
+    setErrors({});
+    setMessage("");
+    setSaved(saveDraft(next, nextPerson));
+  }
+  function goToStep(index) {
+    if (!busy && !documentsBusy) {
+      setStep(index);
+      setErrors({});
+      setMessage("");
+    }
+  }
+  function focusError(nextErrors, index) {
+    setErrors(nextErrors);
+    setStep(index);
+    requestAnimationFrame(() =>
+      document
+        .getElementById("application-" + Object.keys(nextErrors)[0])
+        ?.focus(),
+    );
+  }
+  async function continueForm(event) {
+    event.preventDefault();
+    if (busy || documentsBusy || submissionLock.current) return;
+    if (step < sections.length - 1) {
+      const nextErrors = sectionErrors(
+        sections[step].id,
+        form,
+        person,
+        documents,
+      );
+      if (Object.keys(nextErrors).length) {
+        focusError(nextErrors, step);
+        return;
+      }
+      goToStep(step + 1);
+      return;
+    }
+    for (let index = 0; index < sections.length - 1; index++) {
+      const nextErrors = sectionErrors(
+        sections[index].id,
+        form,
+        person,
+        documents,
+      );
+      if (Object.keys(nextErrors).length) {
+        focusError(nextErrors, index);
+        return;
+      }
+    }
+    if (
+      source?.revisionRequest?.status === "open" &&
+      !form.responseMessage?.trim()
+    ) {
+      focusError(
+        { responseMessage: "Explain how you addressed the correction." },
+        step,
+      );
+      return;
+    }
+    if (!confirmed) {
+      focusError(
+        {
+          consent:
+            "Confirm that you have reviewed the answers and attachments.",
+        },
+        step,
+      );
+      return;
+    }
+    submissionLock.current = true;
+    setBusy(true);
+    setMessage("");
+    try {
+      const id = await submitApplication(form, person, confirmed);
+      navigate("/workspace/ideas/" + id + "?submitted=1", { replace: true });
+    } catch (failure) {
+      setMessage(failure.message);
+      submissionLock.current = false;
+      setBusy(false);
+    }
+  }
+  function saveAndClose() {
+    if (saveDraft(form, person)) navigate("/workspace");
+    else {
+      setSaved(false);
+      setMessage(
+        "The draft could not be saved. Keep this page open and retry.",
+      );
+    }
+  }
+  function ideaField(field) {
+    const common = {
+      id: "application-" + field.key,
+      name: field.key,
+      value: form[field.key] || "",
+      onChange: (event) => update({ ...form, [field.key]: event.target.value }),
+      "aria-invalid": Boolean(errors[field.key]),
+      "aria-describedby": errors[field.key]
+        ? "error-" + field.key
+        : "hint-" + field.key,
+    };
+    return (
+      <div className={"ap-field ap-field-" + field.key} key={field.key}>
+        <label htmlFor={common.id}>{field.label}</label>
+        <p id={"hint-" + field.key}>{hints[field.key]}</p>
+        {field.key === "theme" ? (
+          <select {...common}>
+            <option value="">Select a theme</option>
+            {themes.map((theme) => (
+              <option key={theme.id} value={theme.id}>
+                {theme.name}
+              </option>
+            ))}
+          </select>
+        ) : ["title", "team"].includes(field.key) ? (
+          <input {...common} maxLength={field.max} />
+        ) : (
+          <textarea {...common} maxLength={field.max} rows={6} />
+        )}
+        {errors[field.key] && (
+          <span className="ap-field-error" id={"error-" + field.key}>
+            {errors[field.key]}
+          </span>
+        )}
+        {field.max && (
+          <span className="ap-field-count">
+            {(form[field.key] || "").length.toLocaleString()} /{" "}
+            {field.max.toLocaleString()} ·{" "}
+            {(form[field.key] || "").trim().split(/\s+/).filter(Boolean).length}{" "}
+            words
+          </span>
+        )}
+      </div>
+    );
+  }
+  function budget() {
+    return (
+      <div className="ap-budget">
+        <label className="ap-check-row">
+          <input
+            type="checkbox"
+            checked={Boolean(form.budgetNotApplicable)}
+            onChange={(event) =>
+              update({ ...form, budgetNotApplicable: event.target.checked })
+            }
+          />
+          <span>No funding figures for this application</span>
+        </label>
+        <p className="ap-muted">
+          Only required when the programme asks for funding figures. Amounts are
+          in Botswana pula.
+        </p>
+        {!form.budgetNotApplicable && (
+          <>
+            <div id="application-budgetItems" tabIndex={-1}>
+              {form.budgetItems.map((item, index) => (
+                <div className="ap-budget-row" key={item.id}>
+                  <label>
+                    Item {index + 1}
+                    <input
+                      aria-label={"Budget item " + (index + 1)}
+                      value={item.description}
+                      maxLength={200}
+                      onChange={(event) =>
+                        update({
+                          ...form,
+                          budgetItems: form.budgetItems.map((row, position) =>
+                            position === index
+                              ? { ...row, description: event.target.value }
+                              : row,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Amount (BWP)
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      aria-label={"Budget amount " + (index + 1)}
+                      value={item.amount}
+                      onChange={(event) =>
+                        update({
+                          ...form,
+                          budgetItems: form.budgetItems.map((row, position) =>
+                            position === index
+                              ? { ...row, amount: event.target.value }
+                              : row,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <button
+                    className="ap-icon-control"
+                    type="button"
+                    aria-label={"Remove budget item " + (index + 1)}
+                    onClick={() =>
+                      update({
+                        ...form,
+                        budgetItems: form.budgetItems.filter(
+                          (_, position) => position !== index,
+                        ),
+                      })
+                    }
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              className="ap-text-link"
+              type="button"
+              onClick={() =>
+                update({
+                  ...form,
+                  budgetItems: [
+                    ...form.budgetItems,
+                    { id: crypto.randomUUID(), description: "", amount: "" },
+                  ],
+                })
+              }
+            >
+              <Plus size={16} />
+              Add budget item
+            </button>
+            {errors.budgetItems && (
+              <p className="ap-field-error">{errors.budgetItems}</p>
+            )}
+            <div className="ap-budget-total">
+              Total budget
+              <strong>{money(budgetTotal(form.budgetItems))}</strong>
+            </div>
+            <div className="ap-field">
+              <label htmlFor="application-fundingRequested">
+                Funding requested (BWP, if applicable)
+              </label>
+              <input
+                id="application-fundingRequested"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.fundingRequested}
+                onChange={(event) =>
+                  update({ ...form, fundingRequested: event.target.value })
+                }
+                aria-invalid={Boolean(errors.fundingRequested)}
+              />
+              {errors.fundingRequested && (
+                <p className="ap-field-error">{errors.fundingRequested}</p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+  function review() {
+    const attached = documents.filter((document) =>
+      form.documentIds.includes(document.id),
+    );
+    return (
+      <>
+        <p className="ap-inline-note">
+          {programme.name}. Review every section and the saved attachments.
+        </p>
+        {[
+          [
+            "About you",
+            <dl className="ap-review-summary" key="profile">
+              {[
+                ["Full name", person.fullName],
+                ["Email", person.email],
+                ["Phone", person.phone],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>,
+          ],
+          [
+            "Your business",
+            <div key="business">
+              <p>
+                {person.companyName} ·{" "}
+                {person.registrationNumber || "Registration needs confirmation"}
+              </p>
+              <p>
+                {person.shareholders.length} shareholder
+                {person.shareholders.length === 1 ? "" : "s"}
+              </p>
+            </div>,
+          ],
+          [
+            "Your idea",
+            <dl className="ap-review-summary" key="idea">
+              {applicationFields.map((field) => (
+                <div key={field.key}>
+                  <dt>{field.label}</dt>
+                  <dd>
+                    {field.key === "theme"
+                      ? themes.find((theme) => theme.id === form.theme)?.name
+                      : form[field.key]}
+                  </dd>
+                </div>
+              ))}
+            </dl>,
+          ],
+          [
+            "Budget",
+            <div key="budget">
+              {form.budgetNotApplicable ? (
+                <p>No funding figures for this application.</p>
+              ) : (
+                <>
+                  <ul className="ap-budget-review">
+                    {form.budgetItems.map((item) => (
+                      <li key={item.id}>
+                        <span>{item.description}</span>
+                        <strong>{money(Number(item.amount))}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Total: {money(budgetTotal(form.budgetItems))}</p>
+                  {form.fundingRequested !== "" && (
+                    <p>Requested: {money(Number(form.fundingRequested))}</p>
+                  )}
+                </>
+              )}
+            </div>,
+          ],
+          ["Documents", <DocumentList key="documents" documents={attached} />],
+        ].map(([label, content], index) => (
+          <section className="ap-review-section" key={label}>
+            <div className="ap-section-title">
+              <h3>{label}</h3>
+              <button
+                className="ap-text-link"
+                type="button"
+                onClick={() => goToStep(index)}
+                aria-label={"Change " + label.toLowerCase()}
+              >
+                Change
+              </button>
+            </div>
+            {content}
+          </section>
+        ))}
+        {source && (
+          <div className="ap-field">
+            <label htmlFor="application-responseMessage">
+              {source.revisionRequest?.status === "open"
+                ? "Response to the correction request"
+                : "Update note (optional)"}
+            </label>
+            {source.revisionRequest?.message && (
+              <p>{source.revisionRequest.message}</p>
+            )}
+            <textarea
+              id="application-responseMessage"
+              maxLength={3000}
+              value={form.responseMessage || ""}
+              onChange={(event) =>
+                update({ ...form, responseMessage: event.target.value })
+              }
+              aria-invalid={Boolean(errors.responseMessage)}
+            />
+            {errors.responseMessage && (
+              <p className="ap-field-error">{errors.responseMessage}</p>
+            )}
+          </div>
+        )}
+        <label className="ap-consent">
+          <input
+            id="application-consent"
+            type="checkbox"
+            checked={confirmed}
+            onChange={(event) => {
+              setConfirmed(event.target.checked);
+              setErrors({});
+            }}
+            aria-invalid={Boolean(errors.consent)}
+            aria-describedby={errors.consent ? "error-consent" : undefined}
+          />
+          <span>I have reviewed the answers and attachments.</span>
+        </label>
+        {errors.consent && (
+          <p className="ap-field-error" id="error-consent">
+            {errors.consent}
+          </p>
+        )}
+      </>
+    );
+  }
   return (
     <div className="ap-page ap-submission-page">
       <div className="ap-application-toolbar">
-        <Link className="ap-text-link" to="/workspace"><ArrowLeft size={15} />Applicant home</Link>
-        <span className={'ap-save-status' + (storageWarning ? ' has-warning' : '')} role="status">
-          {storageWarning ? <CircleHelp size={15} /> : <Check size={15} />}
-          {storageWarning ? 'Not saved to this device' : saved ? 'Saved on this device' : 'Saves as you type'}
+        <Link className="ap-text-link" to="/workspace/applications">
+          <ArrowLeft size={15} />
+          My applications
+        </Link>
+        <span className="ap-save-status" role="status">
+          {saved && !storageWarning && <Check size={15} />}
+          {storageWarning ||
+            (saved ? "Saved on this device" : "Changes not saved")}
         </span>
       </div>
+      {source && (
+        <div className="ap-inline-note">
+          {form.revisionKind === "correction"
+            ? "Responding to a correction request"
+            : "Updating your application"}{" "}
+          · Existing reference and previous versions will be kept.
+        </div>
+      )}
       <div className="ap-form-layout">
-        <form className="ap-form-panel ap-panel" onSubmit={continueForm} noValidate>
+        <form
+          className="ap-form-panel ap-panel"
+          noValidate
+          onSubmit={continueForm}
+        >
           <header className="ap-form-panel-header">
-            <div><h2 ref={stepHeading} tabIndex={-1}>{applicationSteps[step].title}</h2><p>{introductions[step]}</p></div>
-            <span className="ap-step-number">{String(step + 1).padStart(2, '0')}<span> / 04</span></span>
-          </header>
-          {Object.values(errors).some(Boolean) && <div className="ap-form-alert" role="alert">Complete the highlighted fields to continue.</div>}
-          {step < 3 ? (
-            <div className="ap-field-grid">{applicationSteps[step].fields.map(renderField)}</div>
-          ) : (
-            <>
-              <dl className="ap-review-summary">
-                {applicationFields.map(field => (
-                  <div key={field.key}>
-                    <dt>{field.label}</dt>
-                    <dd>{field.key === 'theme' ? themes.find(theme => theme.id === form.theme)?.name || 'Not provided' : form[field.key] || 'Not provided'}</dd>
-                    <button type="button" onClick={() => goToStep(applicationSteps.findIndex(item => item.fields.includes(field.key)))} aria-label={'Change ' + field.label.toLowerCase()}>Change</button>
-                  </div>
-                ))}
-              </dl>
-              <label className="ap-consent">
-                <input id="application-consent" type="checkbox" checked={consent} aria-invalid={Boolean(errors.consent)}
-                  aria-describedby={errors.consent ? 'error-consent' : undefined}
-                  onChange={event => { setConsent(event.target.checked); setErrors(previous => ({ ...previous, consent: undefined })) }} />
-                <span>I am using fictional information for this preview.</span>
-              </label>
-              {errors.consent && <p className="ap-field-error" id="error-consent">{errors.consent}</p>}
-              <p className="ap-muted ap-preview-explanation">Saved on this device. Nothing is sent to CEDA.</p>
-            </>
-          )}
-          {message && <p role="alert" className="ap-form-alert">{message}</p>}
-          <div className="ap-form-controls">
-            <button className="ap-button ap-button-secondary" type="button" onClick={() => { saveDraft(form); navigate('/workspace') }}><Save size={16} />Save and close</button>
             <div>
-              {step > 0 && <button className="ap-button ap-button-quiet" type="button" onClick={() => goToStep(step - 1)}><ArrowLeft size={15} />Back</button>}
-              <button className="ap-button ap-button-primary" type="submit" disabled={busy}>{busy ? 'Submitting…' : step === 3 ? 'Submit application' : 'Continue'}<ArrowRight size={16} /></button>
+              <h2 tabIndex={-1} ref={heading}>
+                {sections[step].title}
+              </h2>
+              <p>
+                {step === 5
+                  ? "Check before you submit."
+                  : "Complete this section, or save and return later."}
+              </p>
+            </div>
+            <span className="ap-step-number">
+              {String(step + 1).padStart(2, "0")}
+              <span> / 06</span>
+            </span>
+          </header>
+          {Object.keys(errors).length > 0 && (
+            <div className="ap-form-alert" role="alert">
+              Complete the highlighted items to continue.
+            </div>
+          )}
+          <fieldset disabled={busy} className="ap-form-fieldset">
+            {step === 0 && (
+              <ProfileFields
+                profile={person}
+                errors={errors}
+                onChange={(next) => update(form, next)}
+              />
+            )}
+            {step === 1 && (
+              <ProfileFields
+                section="business"
+                profile={person}
+                errors={errors}
+                onChange={(next) => update(form, next)}
+              />
+            )}
+            {step === 2 && (
+              <div className="ap-field-grid">
+                {applicationFields.map(ideaField)}
+              </div>
+            )}
+            {step === 3 && budget()}
+            {step === 4 && (
+              <ApplicantDocuments
+                draftId={form.id}
+                error={errors.documents}
+                onChanged={() => setErrors({})}
+              />
+            )}
+            {step === 5 && review()}
+          </fieldset>
+          {message && (
+            <p className="ap-form-alert" role="alert">
+              {message}
+            </p>
+          )}
+          <div className="ap-form-controls">
+            <button
+              className="ap-button ap-button-secondary"
+              type="button"
+              onClick={saveAndClose}
+              disabled={busy || documentsBusy}
+            >
+              <Save size={16} />
+              Save and close
+            </button>
+            <div>
+              {step > 0 && (
+                <button
+                  className="ap-button ap-button-quiet"
+                  type="button"
+                  disabled={busy || documentsBusy}
+                  onClick={() => goToStep(step - 1)}
+                >
+                  <ArrowLeft size={15} />
+                  Back
+                </button>
+              )}
+              <button
+                className="ap-button ap-button-primary"
+                type="submit"
+                disabled={busy || documentsBusy}
+              >
+                {busy
+                  ? "Saving submission…"
+                  : step === 5
+                    ? source
+                      ? "Submit updated application"
+                      : "Submit application"
+                    : "Continue"}
+                <ArrowRight size={16} />
+              </button>
             </div>
           </div>
         </form>
         <aside className="ap-form-sidebar" aria-label="Application progress">
           <h2>Your progress</h2>
-          <div className="ap-completion-ring" style={{ '--ap-completion': progress.percent + '%' }} role="progressbar"
-            aria-label="Application completion" aria-valuenow={progress.percent} aria-valuemin={0} aria-valuemax={100}
-            aria-valuetext={`${progress.completed} of ${progress.total} fields complete`}>
-            <strong>{progress.percent}<small>%</small></strong>
+          <div
+            className="ap-completion-ring"
+            style={{ "--ap-completion": progress.percent + "%" }}
+            role="progressbar"
+            aria-label="Application completion"
+            aria-valuenow={progress.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuetext={`${progress.completed} of 5 sections complete`}
+          >
+            <strong>
+              {progress.percent}
+              <small>%</small>
+            </strong>
           </div>
-          <p className="ap-completion-caption">{progress.completed} of {progress.total} fields complete</p>
+          <p className="ap-completion-caption">
+            {progress.completed} of 5 sections complete
+          </p>
           <ol className="ap-form-steps">
-            {applicationSteps.map((item, index) => {
-              const done = item.fields.length > 0 && !Object.keys(validateIdea(form, item.fields)).length
+            {sections.map((section, index) => {
+              const done =
+                index < 5 &&
+                !Object.keys(sectionErrors(section.id, form, person, documents))
+                  .length;
               return (
-                <li key={item.title}>
-                  <button type="button" onClick={() => goToStep(index)}
-                    className={(step === index ? 'is-current ' : '') + (done ? 'is-complete' : '')}
-                    aria-current={step === index ? 'step' : undefined}>
-                    <span>{done ? <Check size={13} /> : index + 1}</span>{item.title}
+                <li key={section.id}>
+                  <button
+                    type="button"
+                    disabled={busy || documentsBusy}
+                    onClick={() => goToStep(index)}
+                    className={
+                      (step === index ? "is-current " : "") +
+                      (done ? "is-complete" : "")
+                    }
+                    aria-current={step === index ? "step" : undefined}
+                  >
+                    <span>{done ? <Check size={13} /> : index + 1}</span>
+                    {section.title}
                   </button>
                 </li>
-              )
+              );
             })}
           </ol>
-          <Link className="ap-text-link ap-progress-guide" to="/portal/help">Application guide<ArrowRight size={14} /></Link>
+          <Link className="ap-text-link ap-progress-guide" to="/portal/help">
+            Application guide
+            <ArrowRight size={14} />
+          </Link>
         </aside>
       </div>
     </div>
-  )
+  );
 }
