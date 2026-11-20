@@ -1,23 +1,39 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { LockKeyhole } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { roleHome } from '../../utils/portal'
 
-// Presentation-only role gate. The future API must independently enforce all permissions.
+// Presentation-only gate. The future API must independently enforce all permissions.
+// Applicant routes use the applicant session; every other route uses the separate staff session.
 export default function ProtectedRoute({ roles, headingAs: Heading = 'h1' }) {
-  const { user, requireAuth } = useAuth()
+  const { user, staffUser, requireAuth } = useAuth()
   const location = useLocation()
+  const forApplicants = roles.includes('submitter')
+
+  if (!forApplicants) {
+    if (!staffUser) return <Navigate to={'/staff?redirect=' + encodeURIComponent(location.pathname + location.search)} replace />
+    if (roles.includes(staffUser.role)) return <Outlet />
+    return (
+      <section className="container page-section access-gate">
+        <span className="feature-icon"><LockKeyhole size={26} /></span>
+        <span className="eyebrow">CEDA staff</span>
+        <Heading>This area is for a different staff role.</Heading>
+        <p>You are signed in as {staffUser.name.replace('Demo ', '').toLowerCase()}.</p>
+        <div className="button-row"><Link className="button button-primary" to={roleHome(staffUser.role)}>Back to my workspace</Link></div>
+      </section>
+    )
+  }
+
   if (user && roles.includes(user.role)) return <Outlet />
   return (
     <section className="container page-section access-gate">
       <span className="feature-icon"><LockKeyhole size={26} /></span>
-      <span className="eyebrow">{user ? 'A different workspace' : 'Your CEDA workspace'}</span>
-      <Heading>{user ? 'Choose your workspace.' : 'Sign in to continue.'}</Heading>
-      <p>{user ? 'This page is for a different role.' : 'Open a demo workspace or continue as a guest.'}</p>
+      <span className="eyebrow">Your CEDA workspace</span>
+      <Heading>Sign in to continue.</Heading>
+      <p>Sign in to see your applications, or keep exploring as a guest.</p>
       <div className="button-row">
-        {user ? <Link className="button button-primary" to={roleHome(user.role)}>My workspace</Link>
-          : <button className="button button-primary" onClick={() => requireAuth(location.pathname)}>Sign in to continue</button>}
-        <Link className="button button-outline" to={user ? '/login' : '/challenges'}>{user ? 'Choose a demo role' : 'Explore as a guest'}</Link>
+        <button className="button button-primary" onClick={() => requireAuth(location.pathname + location.search)}>Sign in to continue</button>
+        <Link className="button button-outline" to="/challenges">Explore as a guest</Link>
       </div>
     </section>
   )
