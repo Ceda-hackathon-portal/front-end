@@ -1049,3 +1049,54 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.sw-outcome-followup {
+  border-top: 1px solid #e6e1d9;
+  margin-top: 30px;
+  padding-top: 24px;
+}
+.sw-outcome-followup h3 {
+  font-size: 16px;
+}
+.sw-outcome-followup .sw-recorded-note small {
+  display: block;
+  font-size: 12px;
+  color: #8b8074;
+  margin-top: 8px;
+}
+.sw-shareholder-evidence {
+  margin-top: 24px;
+}
+.sw-shareholder-evidence ul {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.sw-shareholder-evidence li {
+  padding: 16px 0;
+  border-top: 1px solid #ece8e2;
+}
+.sw-shareholder-evidence li > strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.sw-shareholder-evidence dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin: 12px 0 0;
+}
+.sw-shareholder-evidence dt {
+  font-size: 12px;
+  color: #8d8377;
+}
+.sw-shareholder-evidence dd {
+  font-size: 13px;
+  margin: 7px 0 0;
+}
+@media (max-width: 600px) {
+  .sw-shareholder-evidence dl {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
