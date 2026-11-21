@@ -97,3 +97,12 @@ export function fromApplicantIdea(idea) {
     fromApplicantDemo: true,
   }
 }
+
+// Assignment editors change reviewer membership, not progress or deadlines.
+// A fresh progress update must not make an otherwise unchanged selection stale.
+export function assignmentEditBlocker(expectedEvaluatorIds, currentAssignments) {
+  if (!Array.isArray(expectedEvaluatorIds)) return 'Reopen the reviewer editor before saving.'
+  const expected = [...new Set(expectedEvaluatorIds)].sort()
+  const current = [...new Set(currentAssignments.map(item => item.evaluatorId))].sort()
+  return JSON.stringify(expected) === JSON.stringify(current) ? '' : 'These reviewer assignments changed in another tab. Reopen the editor before saving. Your selection has been kept.'
+}
