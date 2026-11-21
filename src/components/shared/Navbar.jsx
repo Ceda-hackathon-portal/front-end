@@ -456,7 +456,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{user.name}</div>
                       <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, fontFamily: "'Inter', sans-serif" }}>{user.email || user.phone || 'CEDA portal'}</div>
                     </div>
-                    
+
                     <div style={{ display: "grid", gap: 4 }}>
                       <Link
                         to={roleHome(user?.role)}
@@ -480,7 +480,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                         <LayoutDashboard size={18} color="#1A3A6B" />
                         My Dashboard
                       </Link>
-                      
+
                       <button
                         type="button"
                         onClick={handleLogout}
@@ -566,7 +566,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome to CEDA</div>
                       <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, fontFamily: "'Inter', sans-serif" }}>Sign in to continue</div>
                     </div>
-                    
+
                     <div style={{ display: "grid", gap: 4 }}>
                       <Link
                         to="/login"

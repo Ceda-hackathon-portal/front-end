@@ -48,7 +48,9 @@ export default function Footer({ showSignature = false }) {
       <div className="cf-shell">
         <div className="cf-columns">
           <div>
-            <h2 className="cf-heading">Citizen Entrepreneurial Development Agency</h2>
+            <Link to="/" className="cf-logo" aria-label="CEDA, Citizen Entrepreneurial Development Agency: home">
+              <img src="/images/ceda-logo.png" alt="CEDA" width="160" height="98" />
+            </Link>
             <ul className="cf-list">
               <li><span className="cf-text">Botswana</span></li>
               <li>{renderLink('www.ceda.co.bw', 'https://www.ceda.co.bw/')}</li>
@@ -108,6 +110,8 @@ export default function Footer({ showSignature = false }) {
           color: #111111;
           margin: 0 0 26px;
         }
+        .cf-logo { display: inline-block; margin: 0 0 22px; }
+        .cf-logo img { display: block; width: 170px; height: auto; }
         .cf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
         .cf-link, .cf-text {
           font-size: 15px;
@@ -119,14 +123,14 @@ export default function Footer({ showSignature = false }) {
         }
         .cf-link:hover { color: #000000; text-decoration: underline; }
         .cf-highlights {
-          margin: 70px 0 36px;
+          margin: 110px 0 44px;
           text-align: center;
           font-size: 15px;
           font-weight: 400;
           letter-spacing: .1em;
           text-transform: uppercase;
           line-height: 1.8;
-          color: #8a6c55;
+          color: #3b2fd0;
         }
         .cf-bottom {
           border-top: 1px solid #e5e7eb;
