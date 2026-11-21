@@ -4,7 +4,8 @@ The portal shares one edge-to-edge hero layout. Page titles are functional label
 
 ## Supplied assets
 
-- `public/images/applicant-hero.png`: user-supplied `1f09c219-fe50-40fc-b251-3af050628435.png`, used for applicant home.
+- `public/images/Carousel1.jpg`: first public-homepage slideshow photograph, supplied in landing-page commit `e9dcaee`; reused unchanged for applicant home (`/portal` and `/workspace`) at the user's request on 21 November 2026.
+- `public/images/applicant-hero.png`: retained previous applicant-home asset, originally supplied as `1f09c219-fe50-40fc-b251-3af050628435.png`.
 - `public/images/applicant-programmes.png`: user-supplied `3ee1de31-91ea-455a-ab5b-60b92534c2ed.png`, used for Programmes and the home programme panel.
 
 ## Additional photographs
