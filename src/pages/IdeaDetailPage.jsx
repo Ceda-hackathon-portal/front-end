@@ -20,23 +20,22 @@ import { themes } from "../data/portal";
 import { displayDate, displayDateTime } from "../utils/portal";
 import { applicationReference, applicationText } from "../utils/applicant";
 import { budgetTotal, canUpdate } from "../utils/applicantWorkflow";
+import { applicationTimeline } from "../utils/applicationTimeline";
 
-const stageLabels = [
-  ["submitted", "Submitted"],
-  ["eligibility", "Eligibility"],
-  ["shortlist", "Shortlist"],
-  ["evaluation", "Evaluation"],
-  ["decision", "Decision"],
-  ["award", "Award"],
-];
 export default function IdeaDetailPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
-  const { ideas, startRevision, requestReview, setReferralConsent } =
-    usePortal();
+  const {
+    ideas,
+    staffRecords,
+    startRevision,
+    requestReview,
+    setReferralConsent,
+  } = usePortal();
   const [version, setVersion] = useState("latest");
   const [error, setError] = useState("");
   const [grounds, setGrounds] = useState("");
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const idea = ideas.find((item) => item.id === id);
   if (!idea)
@@ -59,22 +58,17 @@ export default function IdeaDetailPage() {
       ? versions.at(-1)
       : versions.find((item) => String(item.number) === version) ||
         versions.at(-1);
-  const currentStage =
-    idea.currentStage ||
-    {
-      Submitted: "submitted",
-      "Under review": "evaluation",
-      Feedback: "evaluation",
-      Approved: "decision",
-      Award: "award",
-    }[idea.status] ||
-    "submitted";
-  const current = stageLabels.findIndex(([code]) => code === currentStage);
-  function updateApplication() {
+  const timeline = applicationTimeline(idea, staffRecords?.[idea.id]);
+  async function updateApplication() {
+    if (busy) return;
+    setBusy(true);
     try {
-      navigate("/workspace/new?draft=" + startRevision(id));
+      const draftId = await startRevision(id);
+      navigate("/workspace/new?draft=" + draftId);
     } catch (failure) {
       setError(failure.message);
+    } finally {
+      setBusy(false);
     }
   }
   function downloadCopy() {
@@ -164,6 +158,7 @@ export default function IdeaDetailPage() {
             <button
               className="ap-button ap-button-primary"
               type="button"
+              disabled={busy}
               onClick={updateApplication}
             >
               Respond and update
@@ -346,12 +341,18 @@ export default function IdeaDetailPage() {
                     <input
                       type="checkbox"
                       checked={Boolean(idea.referralConsent?.consent)}
-                      onChange={(event) => {
+                      disabled={busy}
+                      onChange={async (event) => {
+                        const consent = event.target.checked;
+                        if (busy) return;
+                        setBusy(true);
                         try {
-                          setReferralConsent(id, event.target.checked);
+                          await setReferralConsent(id, consent);
                           setError("");
                         } catch (failure) {
                           setError(failure.message);
+                        } finally {
+                          setBusy(false);
                         }
                       }}
                     />
@@ -363,24 +364,51 @@ export default function IdeaDetailPage() {
               )}
               {idea.outcome.canRequestReview &&
                 (idea.reviewRequest ? (
-                  <p className="ap-inline-note">
-                    Review request: {idea.reviewRequest.status}
-                  </p>
+                  <div className="ap-review-response">
+                    <h3>Review request</h3>
+                    <p>
+                      Review request:{" "}
+                      {{ in_review: "In review", resolved: "Resolved" }[
+                        idea.reviewRequest.status
+                      ] || idea.reviewRequest.status}
+                    </p>
+                    <p>{idea.reviewRequest.grounds}</p>
+                    {idea.reviewRequest.response && (
+                      <>
+                        <h3>CEDA response</h3>
+                        <p>{idea.reviewRequest.response}</p>
+                        {(idea.reviewRequest.respondedAt ||
+                          idea.reviewRequest.updatedAt) && (
+                          <small>
+                            {displayDateTime(
+                              idea.reviewRequest.respondedAt ||
+                                idea.reviewRequest.updatedAt,
+                            )}
+                          </small>
+                        )}
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <form
                     className="ap-review-request ap-no-print"
-                    onSubmit={(event) => {
+                    onSubmit={async (event) => {
                       event.preventDefault();
+                      if (busy) return;
+                      setBusy(true);
                       try {
-                        requestReview(id, grounds);
+                        await requestReview(id, grounds);
                         setError("");
                       } catch (failure) {
                         setError(failure.message);
+                      } finally {
+                        setBusy(false);
                       }
                     }}
                   >
                     <label htmlFor="review-grounds">Grounds for a review</label>
                     <textarea
+                      disabled={busy}
                       id="review-grounds"
                       value={grounds}
                       maxLength={3000}
@@ -389,6 +417,7 @@ export default function IdeaDetailPage() {
                     <button
                       className="ap-button ap-button-secondary"
                       type="submit"
+                      disabled={busy}
                     >
                       Save review request
                       <ArrowRight size={15} />
@@ -412,6 +441,7 @@ export default function IdeaDetailPage() {
             <button
               type="button"
               className="ap-button ap-button-secondary ap-no-print"
+              disabled={busy}
               onClick={updateApplication}
             >
               Update application
@@ -419,25 +449,19 @@ export default function IdeaDetailPage() {
             </button>
           )}
           <ol className="ap-timeline">
-            {stageLabels.map(([code, label], index) => {
-              const stage = idea.stages?.find((item) => item.code === code);
-              const state =
-                stage?.state ||
-                (index < current
-                  ? "done"
-                  : index === current
-                    ? "in_progress"
-                    : "upcoming");
+            {timeline.stages.map((stage, index) => {
+              const { code, label, state } = stage;
+              const isCurrent = code === timeline.currentStage;
               return (
                 <li
                   key={code}
-                  className={
-                    state === "done"
-                      ? "is-done"
-                      : index === current
-                        ? "is-current"
-                        : ""
-                  }
+                  className={[
+                    state === "done" ? "is-done" : "",
+                    isCurrent ? "is-current" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-current={isCurrent ? "step" : undefined}
                 >
                   <span>
                     {state === "done" ? <Check size={13} /> : index + 1}
@@ -445,27 +469,32 @@ export default function IdeaDetailPage() {
                   <div>
                     <strong>{label}</strong>
                     <small>
-                      {stage?.completedAt
-                        ? displayDateTime(stage.completedAt)
-                        : code === "submitted"
-                          ? displayDateTime(idea.submittedAt)
-                          : stage?.expectedBy
-                            ? "Expected by " + displayDate(stage.expectedBy)
-                            : state === "waiting_for_applicant"
-                              ? "Waiting for you"
-                              : index === current
-                                ? "Current recorded stage"
-                                : "Expected date not published"}
+                      {state === "waiting_for_applicant"
+                        ? "Waiting for you"
+                        : stage.completedAt
+                          ? displayDateTime(stage.completedAt)
+                          : state === "not_applicable"
+                            ? "Not applicable"
+                            : state === "not_recorded"
+                              ? "Not separately recorded"
+                              : state === "done"
+                                ? "Completed · date not recorded"
+                                : stage.expectedBy
+                                  ? "Expected by " +
+                                    displayDateTime(stage.expectedBy)
+                                  : isCurrent
+                                    ? "Current recorded stage"
+                                    : "Expected date not published"}
                     </small>
-                    {stage?.action?.message && (
+                    {stage.action?.message && (
                       <p>
                         {stage.action.message}
                         {stage.action.dueAt
-                          ? " · Due " + displayDate(stage.action.dueAt)
+                          ? " · Due " + displayDateTime(stage.action.dueAt)
                           : ""}
                       </p>
                     )}
-                    {stage?.delayReason && <p>{stage.delayReason}</p>}
+                    {stage.delayReason && <p>{stage.delayReason}</p>}
                   </div>
                 </li>
               );
