@@ -1,160 +1,391 @@
-import { createContext, useContext, useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
-import { currentManager as defaultManager, otherManager, evaluators, seedApplications, seedAssignments, seedProgrammes, templates } from '../data/admin'
-import { approvalBlocker, assignmentBlocker, isEditable, validateProgramme } from '../utils/admin'
+import { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
+import {
+  currentManager as defaultManager,
+  otherManager,
+  evaluators,
+  seedApplications,
+  seedAssignments,
+  seedProgrammes,
+  templates,
+} from "../data/admin";
+import {
+  approvalBlocker,
+  assignmentBlocker,
+  assignmentEditBlocker,
+  isEditable,
+  validateProgramme,
+} from "../utils/admin";
 
 // Programme manager demo state, saved in this browser. Each action matches one endpoint in docs/API_CONTRACT.md,
 // so wiring the API replaces the bodies of these functions, not the pages.
-const AdminContext = createContext(null)
-const STORAGE_KEY = 'ceda.admin.v1'
+import {
+  createBrowserStore,
+  assertRecordUnchanged,
+} from "../services/browserPersistence";
+
+const AdminContext = createContext(null);
+const STORAGE_KEY = "ceda.admin.v1";
 
 function fresh() {
-  return { programmes: structuredClone(seedProgrammes), assignments: structuredClone(seedAssignments) }
+  return {
+    programmes: structuredClone(seedProgrammes),
+    assignments: structuredClone(seedAssignments),
+  };
 }
-
-function read() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return fresh()
-    const value = JSON.parse(saved)
-    if (value && Array.isArray(value.programmes) && value.programmes.every(item => item.id && Array.isArray(item.criteria) && Array.isArray(item.history))
-      && value.assignments && typeof value.assignments === 'object' && !Array.isArray(value.assignments)) return value
-  } catch {
-    // Preserve corrupt or inaccessible data; saving must not overwrite it with examples.
-  }
-  return { ...fresh(), storageUnreadable: true }
-}
-
 
 export function AdminProvider({ children }) {
-  const { staffUser } = useAuth()
-  const currentManager = staffUser?.id === otherManager.id ? otherManager : defaultManager
-  const entry = action => ({ at: new Date().toISOString(), actor: currentManager.name, action })
-  const [data, setData] = useState(read)
-  const [storageWarning, setStorageWarning] = useState(data.storageUnreadable ? 'Saved programme data could not be read. The original copy has been kept. Restore browser storage before saving.' : '')
+  const { staffUser } = useAuth();
+  const currentManager =
+    staffUser?.id === otherManager.id ? otherManager : defaultManager;
+  const entry = (action) => ({
+    at: new Date().toISOString(),
+    actor: currentManager.name,
+    action,
+  });
+  const [store] = useState(() =>
+    createBrowserStore({
+      key: STORAGE_KEY,
+      initialValue: fresh(),
+      validate: (value) =>
+        Boolean(
+          value &&
+          Array.isArray(value.programmes) &&
+          value.programmes.every(
+            (item) =>
+              item &&
+              item.id &&
+              Array.isArray(item.criteria) &&
+              Array.isArray(item.history),
+          ) &&
+          value.assignments &&
+          typeof value.assignments === "object" &&
+          !Array.isArray(value.assignments),
+        ),
+    }),
+  );
+  const [data, setData] = useState(store.getSnapshot);
+  const [storageWarning, setStorageWarning] = useState(store.getWarning);
+  useEffect(
+    () =>
+      store.subscribe((next, warning) => {
+        setData(next);
+        setStorageWarning(warning);
+      }),
+    [store],
+  );
 
-  function persist(next) {
-    if (data.storageUnreadable) throw new Error('Saved programme data could not be read. Restore browser storage before saving.')
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      const message = 'Changes could not be saved. Check browser storage and retry.'
-      setStorageWarning(message)
-      throw new Error(message)
-    }
-    setData(next)
-    setStorageWarning('')
+  function readCurrentState() {
+    return store.read();
   }
-
-  function changeProgramme(id, change) {
-    const programme = data.programmes.find((item) => item.id === id)
-    if (!programme) throw new Error('Programme not found.')
-    const next = change(programme)
-    persist({ ...data, programmes: data.programmes.map((item) => (item.id === id ? { ...next, version: programme.version + 1 } : item)) })
-    return next
+  async function persist(change) {
+    try {
+      return await store.update(change);
+    } catch (error) {
+      setStorageWarning(error.message);
+      throw error;
+    }
+  }
+  async function changeProgramme(id, change, options = {}) {
+    const expected = data.programmes.find((item) => item.id === id);
+    let result;
+    await persist((current) => {
+      const programme = current.programmes.find((item) => item.id === id);
+      if (!programme) throw new Error("Programme not found.");
+      assertRecordUnchanged(
+        Object.hasOwn(options, "expectedVersion")
+          ? options.expectedVersion
+          : expected?.version,
+        programme.version,
+        "This programme",
+      );
+      result = {
+        ...change(programme, current),
+        version: programme.version + 1,
+      };
+      return {
+        ...current,
+        programmes: current.programmes.map((item) =>
+          item.id === id ? result : item,
+        ),
+      };
+    });
+    return result;
   }
 
   // POST /admin/programmes
-  function createProgramme({ templateId, name }) {
-    const template = templates.find((item) => item.id === templateId)
-    if (!template) throw new Error('Choose a template.')
-    if (!name?.trim()) throw new Error('Enter a programme name.')
-    const id = 'p_' + crypto.randomUUID().slice(0, 8)
-    const year = new Date().getFullYear() + 1
+  async function createProgramme({ templateId, name }) {
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) throw new Error("Choose a template.");
+    if (!name?.trim()) throw new Error("Enter a programme name.");
+    const id = "p_" + crypto.randomUUID().slice(0, 8);
+    const year = new Date().getFullYear() + 1;
     const programme = {
-      id, code: template.id.split('_').map((word) => word[0]).join('').toUpperCase() + '-' + year,
-      name: name.trim(), templateId, status: 'draft', summary: '', opensAt: '', closesAt: '',
-      ...structuredClone({ themes: template.themes, criteria: template.criteria, stages: template.stages }),
-      reviewersPerApplication: template.reviewersPerApplication, shortlistSize: template.shortlistSize,
-      version: 1, createdBy: currentManager, lastEditedBy: currentManager, approvedBy: null,
-      history: [entry(`Created from the ${template.name.toLowerCase()} template`)],
-    }
-    persist({ ...data, programmes: [programme, ...data.programmes] })
-    return id
+      id,
+      code:
+        template.id
+          .split("_")
+          .map((word) => word[0])
+          .join("")
+          .toUpperCase() +
+        "-" +
+        year,
+      name: name.trim(),
+      templateId,
+      status: "draft",
+      summary: "",
+      opensAt: "",
+      closesAt: "",
+      ...structuredClone({
+        themes: template.themes,
+        criteria: template.criteria,
+        stages: template.stages,
+      }),
+      reviewersPerApplication: template.reviewersPerApplication,
+      shortlistSize: template.shortlistSize,
+      version: 1,
+      createdBy: currentManager,
+      lastEditedBy: currentManager,
+      approvedBy: null,
+      history: [
+        entry(`Created from the ${template.name.toLowerCase()} template`),
+      ],
+    };
+    await persist((current) => ({
+      ...current,
+      programmes: [programme, ...current.programmes],
+    }));
+    return id;
   }
 
   // PATCH /admin/programmes/:id (draft only)
-  function updateProgramme(id, fields) {
-    return changeProgramme(id, (programme) => {
-      if (!isEditable(programme)) throw new Error('Settings are locked. Return the programme to draft to change them.')
-      const edited = programme.history[0]?.action === 'Edited settings' && programme.history[0]?.actor === currentManager.name
-      return { ...programme, ...fields, lastEditedBy: currentManager, history: edited ? programme.history : [entry('Edited settings'), ...programme.history] }
-    })
+  async function updateProgramme(id, fields, options = {}) {
+    return changeProgramme(
+      id,
+      (programme) => {
+        if (!isEditable(programme))
+          throw new Error(
+            "Settings are locked. Return the programme to draft to change them.",
+          );
+        const edited =
+          programme.history[0]?.action === "Edited settings" &&
+          programme.history[0]?.actor === currentManager.name;
+        return {
+          ...programme,
+          ...fields,
+          lastEditedBy: currentManager,
+          history: edited
+            ? programme.history
+            : [entry("Edited settings"), ...programme.history],
+        };
+      },
+      options,
+    );
   }
 
   // POST /admin/programmes/:id/submit-for-approval
-  function submitForApproval(id) {
-    return changeProgramme(id, (programme) => {
-      if (programme.status !== 'draft') throw new Error('Only a draft can be submitted for approval.')
-      if (Object.keys(validateProgramme(programme)).length) throw new Error('Fix the highlighted settings first.')
-      return { ...programme, status: 'awaiting_approval', history: [entry('Submitted for approval'), ...programme.history] }
-    })
+  async function submitForApproval(id, options = {}) {
+    return changeProgramme(
+      id,
+      (programme) => {
+        if (programme.status !== "draft")
+          throw new Error("Only a draft can be submitted for approval.");
+        if (Object.keys(validateProgramme(programme)).length)
+          throw new Error("Fix the highlighted settings first.");
+        return {
+          ...programme,
+          status: "awaiting_approval",
+          history: [entry("Submitted for approval"), ...programme.history],
+        };
+      },
+      options,
+    );
   }
 
   // POST /admin/programmes/:id/approve
-  function approveProgramme(id) {
-    return changeProgramme(id, (programme) => {
-      const blocker = approvalBlocker(programme, currentManager.id)
-      if (blocker) throw new Error(blocker)
-      return { ...programme, status: 'open', approvedBy: currentManager, history: [entry('Approved and opened. Settings locked'), ...programme.history] }
-    })
+  async function approveProgramme(id, options = {}) {
+    return changeProgramme(
+      id,
+      (programme) => {
+        const blocker = approvalBlocker(programme, currentManager.id);
+        if (blocker) throw new Error(blocker);
+        return {
+          ...programme,
+          status: "open",
+          approvedBy: currentManager,
+          history: [
+            entry("Approved and opened. Settings locked"),
+            ...programme.history,
+          ],
+        };
+      },
+      options,
+    );
   }
 
   // POST /admin/programmes/:id/return
-  function returnToDraft(id, reason) {
-    if (!reason?.trim()) throw new Error('Give a reason so the other manager knows what to change.')
-    return changeProgramme(id, (programme) => {
-      if (programme.status !== 'awaiting_approval') throw new Error('Only a programme awaiting approval can be returned.')
-      return { ...programme, status: 'draft', history: [entry('Returned to draft: ' + reason.trim()), ...programme.history] }
-    })
+  async function returnToDraft(id, reason, options = {}) {
+    if (!reason?.trim())
+      throw new Error(
+        "Give a reason so the other manager knows what to change.",
+      );
+    return changeProgramme(
+      id,
+      (programme) => {
+        if (programme.status !== "awaiting_approval")
+          throw new Error(
+            "Only a programme awaiting approval can be returned.",
+          );
+        return {
+          ...programme,
+          status: "draft",
+          history: [
+            entry("Returned to draft: " + reason.trim()),
+            ...programme.history,
+          ],
+        };
+      },
+      options,
+    );
   }
 
   // POST /admin/programmes/:id/close
-  function closeApplications(id) {
-    return changeProgramme(id, (programme) => {
-      if (programme.status !== 'open') throw new Error('Only an open programme can be closed.')
-      return { ...programme, status: 'closed', history: [entry('Closed to new applications'), ...programme.history] }
-    })
+  async function closeApplications(id, options = {}) {
+    return changeProgramme(
+      id,
+      (programme) => {
+        if (programme.status !== "open")
+          throw new Error("Only an open programme can be closed.");
+        return {
+          ...programme,
+          status: "closed",
+          history: [entry("Closed to new applications"), ...programme.history],
+        };
+      },
+      options,
+    );
   }
 
   // PUT /admin/programmes/:id/applications/:applicationId/assignments
-  function setAssignments(programmeId, application, evaluatorIds) {
-    const programme = data.programmes.find((item) => item.id === programmeId)
-    const blocker = assignmentBlocker({ programme, application, evaluatorIds, evaluators })
-    if (blocker) throw new Error(blocker)
-    const previous = data.assignments[application.id] || []
-    const due = new Date(Date.now() + 14 * 86400000).toISOString()
-    const nextAssignments = evaluatorIds.map((evaluatorId) => previous.find((item) => item.evaluatorId === evaluatorId)
-      || { evaluatorId, progress: 'not_started', assignedAt: new Date().toISOString(), dueAt: due })
-    const names = evaluatorIds.map((id) => evaluators.find((item) => item.id === id).name).join(', ') || 'nobody'
-    persist({
-      programmes: data.programmes.map((item) => (item.id === programmeId
-        ? { ...item, history: [entry(`Assigned ${names} to ${application.reference}`), ...item.history] } : item)),
-      assignments: { ...data.assignments, [application.id]: nextAssignments },
-    })
+  async function setAssignments(
+    programmeId,
+    application,
+    evaluatorIds,
+    options = {},
+  ) {
+    const expected = Object.hasOwn(options, "expectedEvaluatorIds")
+      ? options.expectedEvaluatorIds
+      : (data.assignments[application.id] || []).map(
+          (item) => item.evaluatorId,
+        );
+    await persist((current) => {
+      const programme = current.programmes.find(
+        (item) => item.id === programmeId,
+      );
+      if (!programme) throw new Error("Programme not found.");
+      const blocker = assignmentBlocker({
+        programme,
+        application,
+        evaluatorIds,
+        evaluators,
+      });
+      if (blocker) throw new Error(blocker);
+      const previous = current.assignments[application.id] || [];
+      const editBlocker = assignmentEditBlocker(expected, previous);
+      if (editBlocker) throw new Error(editBlocker);
+      const dueAt = new Date(Date.now() + 14 * 86400000).toISOString();
+      const nextAssignments = evaluatorIds.map(
+        (evaluatorId) =>
+          previous.find((item) => item.evaluatorId === evaluatorId) || {
+            evaluatorId,
+            progress: "not_started",
+            assignedAt: new Date().toISOString(),
+            dueAt,
+          },
+      );
+      const names =
+        evaluatorIds
+          .map((id) => evaluators.find((item) => item.id === id).name)
+          .join(", ") || "nobody";
+      return {
+        ...current,
+        programmes: current.programmes.map((item) =>
+          item.id === programmeId
+            ? {
+                ...item,
+                history: [
+                  entry(`Assigned ${names} to ${application.reference}`),
+                  ...item.history,
+                ],
+              }
+            : item,
+        ),
+        assignments: {
+          ...current.assignments,
+          [application.id]: nextAssignments,
+        },
+      };
+    });
   }
 
   // Workflow checks are performed by StaffWorkflowContext before this locked transition.
-  function closeScoring(id) {
-    if (staffUser?.role !== 'administrator') throw new Error('Only the administrator can close scoring.')
-    return changeProgramme(id, programme => {
-      if (programme.status !== 'closed') throw new Error('Close applications before closing scoring.')
-      return { ...programme, status: 'scoring_closed', history: [entry('Scoring closed after assigned reviews were checked'), ...programme.history] }
-    })
+  async function closeScoring(id, { assertCanClose } = {}) {
+    if (staffUser?.role !== "administrator")
+      throw new Error("Only the administrator can close scoring.");
+    if (typeof assertCanClose !== "function")
+      throw new Error(
+        "Close scoring from the staff workflow so current reviews can be checked.",
+      );
+    let result;
+    await persist((current) => {
+      const programme = current.programmes.find((item) => item.id === id);
+      if (!programme || programme.status !== "closed")
+        throw new Error("Close applications before closing scoring.");
+      assertCanClose(programme, current);
+      result = {
+        ...programme,
+        status: "scoring_closed",
+        version: programme.version + 1,
+        history: [
+          entry("Scoring closed after assigned reviews were checked"),
+          ...programme.history,
+        ],
+      };
+      return {
+        ...current,
+        programmes: current.programmes.map((item) =>
+          item.id === id ? result : item,
+        ),
+      };
+    });
+    return result;
   }
 
-  function resetAdminDemo() {
-    persist(fresh())
+  async function resetAdminDemo() {
+    await persist(() => fresh());
   }
 
   return (
-    <AdminContext.Provider value={{
-      ...data, storageWarning, currentManager, createProgramme, updateProgramme, submitForApproval,
-      approveProgramme, returnToDraft, closeApplications, setAssignments, resetAdminDemo, closeScoring,
-    }}>
+    <AdminContext.Provider
+      value={{
+        ...data,
+        storageWarning,
+        currentManager,
+        readCurrentState,
+        createProgramme,
+        updateProgramme,
+        submitForApproval,
+        approveProgramme,
+        returnToDraft,
+        closeApplications,
+        setAssignments,
+        resetAdminDemo,
+        closeScoring,
+      }}
+    >
       {children}
     </AdminContext.Provider>
-  )
+  );
 }
 
-export const useAdmin = () => useContext(AdminContext)
+export const useAdmin = () => useContext(AdminContext);
