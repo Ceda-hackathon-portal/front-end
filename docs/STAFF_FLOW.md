@@ -34,6 +34,10 @@ Programme creators cannot approve their own programme. Demo access offers two di
 - Save failures are shown before success is reported. Unreadable stores are preserved and blocked from being overwritten with samples. A failed upload does not become a successful attachment.
 - Applicant working text has been enlarged while keeping the shared hero dimensions. Staff pages share the CEDA colour palette and compact overlaid header; photograph sources are in [Staff image sources](STAFF_IMAGE_SOURCES.md).
 
+## Live browser handoff
+
+Already-open tabs follow changes to the shared browser records. Writes read the current saved state, preserve independent updates and reject stale edits to the same record. All browser metadata writes share one write lock, including applicant autosaves and staff actions. Save success is reported only after the durable write; saving is blocked clearly if the browser lacks the required lock support. A stale applicant draft can reopen the saved answers without signing out. Applicant review-request grounds and consent are visible to authorised staff; their response returns to the applicant. See [End-to-end checks](END_TO_END_TESTS.md).
+
 ## Verification and service boundary
 
 Run `npm test` and `npm run build`. Tests cover applicant validation, programme rules, staff return routes, conflict and assignment checks, score reasons, private marks, review quorum, decision permissions, version changes and intake closure.
