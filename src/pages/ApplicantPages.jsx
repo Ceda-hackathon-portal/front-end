@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -144,6 +144,8 @@ export function ApplicantMessagesPage() {
   const { messages, ideas, markMessageRead, markAllMessagesRead } = usePortal();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
   const unread = messages.filter((message) => !message.readAt).length;
   const shown = [...messages]
     .filter((message) => !unreadOnly || !message.readAt)
@@ -158,13 +160,17 @@ export function ApplicantMessagesPage() {
           <button
             className="ap-text-link"
             type="button"
-            disabled={!unread}
-            onClick={() => {
+            disabled={!unread || busy}
+            onClick={async () => {
+              if (busy) return;
+              setBusy(true);
               try {
-                markAllMessagesRead();
+                await markAllMessagesRead();
                 setError("");
               } catch (failure) {
                 setError(failure.message);
+              } finally {
+                setBusy(false);
               }
             }}
           >
@@ -190,12 +196,18 @@ export function ApplicantMessagesPage() {
             className={"ap-message-row" + (!message.readAt ? " is-unread" : "")}
             key={message.id}
             to={"/workspace/ideas/" + message.applicationId}
-            onClick={(event) => {
+            aria-disabled={busy}
+            onClick={async (event) => {
+              event.preventDefault();
+              if (busy) return;
+              setBusy(true);
               try {
-                markMessageRead(message.id);
+                await markMessageRead(message.id);
+                navigate("/workspace/ideas/" + message.applicationId);
               } catch (failure) {
-                event.preventDefault();
                 setError(failure.message);
+              } finally {
+                setBusy(false);
               }
             }}
           >
