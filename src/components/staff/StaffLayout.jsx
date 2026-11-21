@@ -99,7 +99,8 @@ function heroFor(path) {
     {
       "/admin": {
         title: "Staff workspace",
-        image: "staff-overview.jpg",
+        image: "Carousel2.jpg",
+        position: "center 60%",
         section: "Overview",
       },
       "/admin/applications": {
@@ -187,6 +188,7 @@ export default function StaffLayout() {
           <img
             className="st-hero-image"
             src={"/images/" + hero.image}
+            style={hero.position ? { objectPosition: hero.position } : undefined}
             alt=""
             fetchPriority="high"
           />
