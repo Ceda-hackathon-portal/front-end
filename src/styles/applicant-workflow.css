@@ -835,3 +835,25 @@
     font-size: 12px;
   }
 }
+
+.ap-review-response {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ap-line);
+}
+.ap-review-response h3 {
+  margin-top: 14px;
+  font-size: 14px;
+}
+.ap-review-response p {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ap-review-response small {
+  display: block;
+  margin-top: 12px;
+  color: var(--ap-muted);
+}
