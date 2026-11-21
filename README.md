@@ -35,6 +35,8 @@ Run `npm test` for applicant, programme-manager and staff workflow checks, inclu
 
 The shared staff entry is `/admin`, with screening, assigned reviews, decisions, programmes, management insights and system status. Staff and applicant records connect through the local workflow; accounts and shared services remain unconnected. See [Staff workflow and service boundaries](docs/STAFF_FLOW.md) and [Staff photograph sources](docs/STAFF_IMAGE_SOURCES.md).
 
+Run `npm run test:e2e` for the multi-tab applicant-to-staff browser journeys, including concurrent reviews and stale-write recovery. See [End-to-end checks](docs/END_TO_END_TESTS.md) for browser setup and coverage.
+
 ## Branching and reviews
 
 - `main` is production. Every push to `main` deploys.
