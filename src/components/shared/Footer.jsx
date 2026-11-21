@@ -25,7 +25,7 @@ const legalLinks = [
   ['Help', '/help'],
 ]
 
-export default function Footer({ showSignature = false }) {
+export default function Footer() {
   const { requireAuth } = useAuth()
   const navigate = useNavigate()
 
@@ -83,7 +83,6 @@ export default function Footer({ showSignature = false }) {
             <span key={label}>{renderLink(label, href)}</span>
           ))}
         </div>
-        {showSignature && <div className="cf-signature" aria-hidden="true">CEDA</div>}
       </div>
 
       <style>{`
@@ -140,21 +139,6 @@ export default function Footer({ showSignature = false }) {
           justify-content: center;
           gap: 20px 32px;
           flex-wrap: wrap;
-        }
-        .cf-signature {
-          width: min(100%, 900px);
-          margin: 12px auto 0;
-          padding: 16px 0 0;
-          font-size: clamp(92px, 16vw, 220px);
-          font-weight: 700;
-          line-height: .86;
-          letter-spacing: -.07em;
-          text-align: center;
-          background: linear-gradient(110deg, #c9906040, #a9664933 48%, #9b8f6e30);
-          background-clip: text;
-          -webkit-background-clip: text;
-          color: transparent;
-          user-select: none;
         }
         @media (max-width: 700px) {
           .cf-highlights { margin: 64px 0 32px; font-size: 12px; }
