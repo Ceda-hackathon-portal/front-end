@@ -14,7 +14,7 @@ const navigation = [
 ]
 
 const homeHero = {
-  title: 'Applicant portal', image: 'applicant-hero.png', position: 'center 44%', mobilePosition: '61% center',
+  title: 'Applicant portal', image: 'Carousel1.jpg', position: 'center 44%', mobilePosition: '85% center',
   action: 'Start an application', to: '/workspace/new',
 }
 const pageHeroes = {
