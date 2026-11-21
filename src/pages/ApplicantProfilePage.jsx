@@ -11,14 +11,16 @@ export default function ApplicantProfilePage() {
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
   function change(next) {
     setForm(next);
     setSaved(false);
     setMessage("");
     setErrors({});
   }
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
+    if (busy) return;
     const nextErrors = {
       ...validateProfile(form),
       ...validateProfile(form, "business"),
@@ -31,81 +33,91 @@ export default function ApplicantProfilePage() {
         ?.focus();
       return;
     }
+    setBusy(true);
     try {
-      saveProfile({
+      const savedProfile = await saveProfile({
         ...form,
         contactConsentRecordedAt: new Date().toISOString(),
       });
+      setForm(structuredClone(savedProfile));
       setSaved(true);
       setMessage(
         "Profile saved on this device. It will be reused in new applications.",
       );
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setBusy(false);
     }
   }
   return (
     <div className="ap-page ap-profile-page">
       <form className="ap-panel" onSubmit={submit} noValidate>
-        <div className="ap-section-title">
-          <h2>Personal details</h2>
-          <span className="ap-soft-label">Not verified by CEDA</span>
-        </div>
-        <ProfileFields profile={form} onChange={change} errors={errors} />
-        <div className="ap-profile-divider">
-          <h2>Company details</h2>
-        </div>
-        <ProfileFields
-          section="business"
-          profile={form}
-          onChange={change}
-          errors={errors}
-        />
-        <div className="ap-profile-divider">
-          <h2>Contact and display preferences</h2>
-        </div>
-        <p className="ap-muted">
-          Choose how CEDA may contact you when delivery services are connected.
-          Application content is not included in SMS.
-        </p>
-        {[
-          ["email", "Email updates"],
-          ["sms", "SMS updates"],
-          ["dataLight", "Data-light mode — hide decorative photos"],
-        ].map(([key, label]) => (
-          <label className="ap-check-row" key={key}>
-            <input
-              type="checkbox"
-              checked={Boolean(form.preferences?.[key])}
-              onChange={(event) =>
-                change({
-                  ...form,
-                  preferences: {
-                    ...form.preferences,
-                    [key]: event.target.checked,
-                  },
-                })
-              }
-            />
-            <span>{label}</span>
-          </label>
-        ))}
-        {message && (
-          <p
-            role={saved ? "status" : "alert"}
-            className={saved ? "ap-inline-note" : "ap-form-alert"}
-          >
-            {saved && <Check size={15} />}
-            {message}
+        <fieldset className="ap-form-fieldset" disabled={busy}>
+          <div className="ap-section-title">
+            <h2>Personal details</h2>
+            <span className="ap-soft-label">Not verified by CEDA</span>
+          </div>
+          <ProfileFields profile={form} onChange={change} errors={errors} />
+          <div className="ap-profile-divider">
+            <h2>Company details</h2>
+          </div>
+          <ProfileFields
+            section="business"
+            profile={form}
+            onChange={change}
+            errors={errors}
+          />
+          <div className="ap-profile-divider">
+            <h2>Contact and display preferences</h2>
+          </div>
+          <p className="ap-muted">
+            Choose how CEDA may contact you when delivery services are
+            connected. Application content is not included in SMS.
           </p>
-        )}
-        <div className="ap-profile-actions">
-          <button type="submit" className="ap-button ap-button-primary">
-            <Save size={16} />
-            Save profile
-          </button>
-          <span>Verification is completed by a CEDA officer.</span>
-        </div>
+          {[
+            ["email", "Email updates"],
+            ["sms", "SMS updates"],
+            ["dataLight", "Data-light mode — hide decorative photos"],
+          ].map(([key, label]) => (
+            <label className="ap-check-row" key={key}>
+              <input
+                type="checkbox"
+                checked={Boolean(form.preferences?.[key])}
+                onChange={(event) =>
+                  change({
+                    ...form,
+                    preferences: {
+                      ...form.preferences,
+                      [key]: event.target.checked,
+                    },
+                  })
+                }
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+          {message && (
+            <p
+              role={saved ? "status" : "alert"}
+              className={saved ? "ap-inline-note" : "ap-form-alert"}
+            >
+              {saved && <Check size={15} />}
+              {message}
+            </p>
+          )}
+          <div className="ap-profile-actions">
+            <button
+              type="submit"
+              className="ap-button ap-button-primary"
+              disabled={busy}
+            >
+              <Save size={16} />
+              Save profile
+            </button>
+            <span>Verification is completed by a CEDA officer.</span>
+          </div>
+        </fieldset>
       </form>
       <section className="ap-panel">
         <ApplicantDocuments />
