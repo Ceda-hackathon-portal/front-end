@@ -35,16 +35,24 @@ export default function SubmitIdeaPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const requestedId = params.get("draft");
   const draft = drafts.find((item) => item.id === requestedId);
   const requestedTheme = params.get("theme") || "";
   if (draft) return <ApplicationForm key={draft.id} draft={draft} />;
-  function start() {
+  async function start() {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     try {
-      const id = createDraft(requestedTheme);
+      const id = await createDraft(requestedTheme);
       navigate("/workspace/new?draft=" + id, { replace: true });
     } catch (failure) {
       setError(failure.message);
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   }
   return (
@@ -92,6 +100,7 @@ export default function SubmitIdeaPage() {
             className="ap-button ap-button-primary"
             type="button"
             onClick={start}
+            disabled={starting}
           >
             Start a new application
             <Plus size={16} />
@@ -116,6 +125,7 @@ function ApplicationForm({ draft }) {
     ideas,
     saveDraft,
     submitApplication,
+    reloadWorkspace,
     storageWarning,
     documentsBusy,
   } = usePortal();
@@ -128,6 +138,12 @@ function ApplicationForm({ draft }) {
   const [confirmed, setConfirmed] = useState(false);
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [documentsPending, setDocumentsPending] = useState(false);
+  const saveSequence = useRef(0);
+  const savingRef = useRef(false);
+  const pendingSave = useRef(Promise.resolve(true));
+  const documentsLocked = documentsBusy || documentsPending;
   const [busy, setBusy] = useState(false);
   const submissionLock = useRef(false);
   const heading = useRef(null);
@@ -135,24 +151,74 @@ function ApplicationForm({ draft }) {
   const navigate = useNavigate();
   const progress = workflowProgress(form, person, documents);
   const source = ideas.find((idea) => idea.id === form.revisionOf);
+  const attachmentIds = JSON.stringify(draft.documentIds);
   useEffect(() => {
-    setForm((current) => ({ ...current, documentIds: draft.documentIds }));
-  }, [draft.documentIds]);
+    setForm((current) => ({
+      ...current,
+      documentIds: JSON.parse(attachmentIds),
+    }));
+    setConfirmed(false);
+  }, [attachmentIds]);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     if (previousStep.current !== step)
       heading.current?.scrollIntoView({ block: "start", behavior: "instant" });
     previousStep.current = step;
   }, [step]);
+  function persistDraft(next, nextPerson) {
+    const sequence = ++saveSequence.current;
+    savingRef.current = true;
+    setSaved(false);
+    setSaving(true);
+    const operation = pendingSave.current
+      .then(() => saveDraft(next, nextPerson))
+      .catch(() => false);
+    pendingSave.current = operation;
+    operation.then((result) => {
+      if (sequence !== saveSequence.current) return;
+      savingRef.current = false;
+      setSaved(result);
+      setSaving(false);
+      if (!result)
+        setMessage(
+          "The draft could not be saved. Keep this page open and retry.",
+        );
+    });
+    return operation;
+  }
   function update(next, nextPerson = person) {
     setForm(next);
     setPerson(nextPerson);
     setErrors({});
     setMessage("");
-    setSaved(saveDraft(next, nextPerson));
+    setConfirmed(false);
+    persistDraft(next, nextPerson);
+  }
+  function reopenSavedDraft() {
+    if (savingRef.current || documentsLocked || busy) return;
+    ++saveSequence.current;
+    try {
+      const latest = reloadWorkspace();
+      const current = latest.drafts.find((item) => item.id === form.id);
+      if (!current)
+        throw new Error(
+          "This draft was submitted or removed. Return to My applications.",
+        );
+      setForm(structuredClone(current));
+      setPerson(structuredClone(latest.profile));
+      setStep(
+        firstUnfinishedSection(current, latest.profile, latest.documents),
+      );
+      setErrors({});
+      setConfirmed(false);
+      setSaved(true);
+      setMessage("Latest saved answers loaded. Review them before submitting.");
+    } catch (failure) {
+      setMessage(failure.message);
+    }
   }
   function goToStep(index) {
-    if (!busy && !documentsBusy) {
+    if (!busy && !documentsLocked && !savingRef.current && saved) {
       setStep(index);
       setErrors({});
       setMessage("");
@@ -169,7 +235,14 @@ function ApplicationForm({ draft }) {
   }
   async function continueForm(event) {
     event.preventDefault();
-    if (busy || documentsBusy || submissionLock.current) return;
+    if (
+      busy ||
+      documentsLocked ||
+      savingRef.current ||
+      !saved ||
+      submissionLock.current
+    )
+      return;
     if (step < sections.length - 1) {
       const nextErrors = sectionErrors(
         sections[step].id,
@@ -228,13 +301,13 @@ function ApplicationForm({ draft }) {
       setBusy(false);
     }
   }
-  function saveAndClose() {
-    if (saveDraft(form, person)) navigate("/workspace");
-    else {
-      setSaved(false);
-      setMessage(
-        "The draft could not be saved. Keep this page open and retry.",
-      );
+  async function saveAndClose() {
+    if (busy || documentsLocked || savingRef.current) return;
+    setBusy(true);
+    try {
+      if (await persistDraft(form, person)) navigate("/workspace");
+    } finally {
+      setBusy(false);
     }
   }
   function ideaField(field) {
@@ -554,11 +627,31 @@ function ApplicationForm({ draft }) {
           My applications
         </Link>
         <span className="ap-save-status" role="status">
-          {saved && !storageWarning && <Check size={15} />}
+          {saved && !saving && !storageWarning && <Check size={15} />}
           {storageWarning ||
-            (saved ? "Saved on this device" : "Changes not saved")}
+            (saving
+              ? "Saving changes…"
+              : saved
+                ? "Saved on this device"
+                : "Changes not saved")}
         </span>
       </div>
+      {!saved && !saving && (
+        <div className="ap-form-alert">
+          <p>
+            Your changes have not saved. Reopening restores the latest saved
+            answers.
+          </p>
+          <button
+            type="button"
+            className="ap-button ap-button-secondary"
+            onClick={reopenSavedDraft}
+            disabled={busy || documentsLocked || saving}
+          >
+            Reopen saved draft
+          </button>
+        </div>
+      )}
       {source && (
         <div className="ap-inline-note">
           {form.revisionKind === "correction"
@@ -621,6 +714,7 @@ function ApplicationForm({ draft }) {
                 draftId={form.id}
                 error={errors.documents}
                 onChanged={() => setErrors({})}
+                onPendingChange={setDocumentsPending}
               />
             )}
             {step === 5 && review()}
@@ -635,7 +729,7 @@ function ApplicationForm({ draft }) {
               className="ap-button ap-button-secondary"
               type="button"
               onClick={saveAndClose}
-              disabled={busy || documentsBusy}
+              disabled={busy || documentsLocked || saving}
             >
               <Save size={16} />
               Save and close
@@ -645,7 +739,7 @@ function ApplicationForm({ draft }) {
                 <button
                   className="ap-button ap-button-quiet"
                   type="button"
-                  disabled={busy || documentsBusy}
+                  disabled={busy || documentsLocked || saving}
                   onClick={() => goToStep(step - 1)}
                 >
                   <ArrowLeft size={15} />
@@ -655,7 +749,7 @@ function ApplicationForm({ draft }) {
               <button
                 className="ap-button ap-button-primary"
                 type="submit"
-                disabled={busy || documentsBusy}
+                disabled={busy || documentsLocked || saving || !saved}
               >
                 {busy
                   ? "Saving submission…"
@@ -699,7 +793,7 @@ function ApplicationForm({ draft }) {
                 <li key={section.id}>
                   <button
                     type="button"
-                    disabled={busy || documentsBusy}
+                    disabled={busy || documentsLocked || saving}
                     onClick={() => goToStep(index)}
                     className={
                       (step === index ? "is-current " : "") +
