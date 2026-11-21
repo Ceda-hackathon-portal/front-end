@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { approvalBlocker, assignmentBlocker, fromApplicantIdea, isOverdue, suggestReviewers, validateProgramme, weightTotal } from './admin.js'
+import { approvalBlocker, assignmentBlocker, assignmentEditBlocker, fromApplicantIdea, isOverdue, suggestReviewers, validateProgramme, weightTotal } from './admin.js'
 import { currentManager, evaluators, otherManager, seedProgrammes } from '../data/admin.js'
 
 const open = seedProgrammes.find((item) => item.status === 'open')
@@ -63,4 +63,11 @@ test('a new applicant submission waits for the eligibility check', () => {
   assert.equal(row.eligibility, 'pending')
   assert.equal(row.currentStage, 'eligibility')
   assert.equal(row.reference, 'CEDA-DEMO-1234ABCD')
+})
+
+test('an open reviewer editor preserves fresh progress but rejects changed reviewer membership', () => {
+  const current = [{ evaluatorId: 'e_02', progress: 'submitted', dueAt: '2026-12-01' }, { evaluatorId: 'e_01', progress: 'in_progress', dueAt: '2026-12-02' }]
+  assert.equal(assignmentEditBlocker(['e_01', 'e_02'], current), '')
+  assert.match(assignmentEditBlocker(['e_01'], current), /changed in another tab/)
+  assert.match(assignmentEditBlocker(['e_01', 'e_03'], current), /changed in another tab/)
 })
