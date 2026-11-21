@@ -380,3 +380,148 @@ fieldset:disabled { opacity: .45; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+/* ===== Bolder public pages =====
+   Programmes, Submission guide, Help, Privacy (About and Services share the same styles).
+   Paste this block at the END of globals.css. No page files need to change. */
+
+/* Page headings */
+.page-section .public-page-header { margin-bottom: 34px; }
+.page-section .public-page-header h1 {
+  font-size: clamp(40px, 5.2vw, 64px);
+  font-weight: 800;
+  letter-spacing: -.05em;
+  line-height: 1.05;
+  color: #0B1F3A;
+}
+.page-section .public-page-header h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: #1a3a6b;
+}
+.page-section .public-page-header p {
+  max-width: 640px;
+  margin-top: 22px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: #475569;
+}
+
+/* Lists: Programmes and Services */
+.page-section .simple-service-list { max-width: none; border-top: 2px solid #0B1F3A; }
+.page-section .simple-service-list > a { padding: 28px 4px; }
+.page-section .simple-service-list strong {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #0B1F3A;
+  transition: color .2s ease;
+}
+.page-section .simple-service-list small {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.page-section .simple-service-list > a:hover strong { color: #1a3a6b; }
+.page-section .simple-service-list > a > svg {
+  box-sizing: content-box;
+  padding: 11px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0B1F3A;
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.page-section .simple-service-list > a:hover > svg {
+  background: #0B1F3A;
+  color: #ffffff;
+  transform: translateX(4px);
+}
+.page-section .simple-service-list > p { padding: 30px 4px 10px; font-size: 17px; font-weight: 600; color: #0B1F3A; }
+
+/* Submission guide steps */
+.page-section .simple-steps { margin-bottom: 48px; border-top: 2px solid #0B1F3A; }
+.page-section .simple-steps li {
+  align-items: center;
+  gap: 32px;
+  padding: 30px 4px;
+  border-top: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.page-section .simple-steps li > span {
+  min-width: 64px;
+  padding-top: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: #1a3a6b;
+}
+.page-section .simple-steps h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 700; letter-spacing: -.025em; color: #0B1F3A; }
+.page-section .simple-steps p { margin-top: 8px; font-size: 16px; line-height: 1.6; color: #475569; }
+
+/* Questions: Submission guide, Help, Privacy, About */
+.page-section .information-grid { margin-bottom: 36px; border-top: 2px solid #0B1F3A; }
+.page-section .guide-details { padding: 0; border-top: 1px solid #e5e7eb; }
+.page-section .guide-details:last-of-type { border-bottom: 1px solid #e5e7eb; }
+.page-section .simple-steps + .guide-details,
+.page-section .information-grid .guide-details:first-child { border-top: 0; }
+.page-section .guide-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px 4px;
+  font-size: 19px;
+  font-weight: 600;
+  color: #0B1F3A;
+  list-style: none;
+  transition: color .2s ease;
+}
+.page-section .guide-details summary::-webkit-details-marker { display: none; }
+.page-section .guide-details summary::after {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0B1F3A;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background .2s ease, color .2s ease;
+}
+.page-section .guide-details summary:hover { color: #1a3a6b; }
+.page-section .guide-details[open] summary::after { content: "\2212"; background: #0B1F3A; color: #ffffff; }
+.page-section .guide-details p { max-width: 700px; padding: 0 4px 28px; font-size: 16px; line-height: 1.75; color: #475569; }
+
+/* Buttons on these pages */
+.page-section .guide-details + .button { margin-top: 36px; }
+.page-section .guide-details + .button-primary,
+.page-section .information-grid + .button-outline {
+  padding: 15px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+.page-section .information-grid + .button-outline { color: #0B1F3A; border: 2px solid #0B1F3A; }
+.page-section .information-grid + .button-outline:hover { background: #0B1F3A; color: #ffffff; }
+
+@media (max-width: 700px) {
+  .page-section .simple-service-list > a { padding: 22px 2px; }
+  .page-section .simple-steps li { gap: 18px; padding: 24px 2px; }
+  .page-section .simple-steps li > span { min-width: 44px; font-size: 34px; }
+  .page-section .simple-steps p { font-size: 15px; }
+  .page-section .guide-details summary { padding: 22px 2px; font-size: 17px; }
+  .page-section .guide-details p { font-size: 15px; }
+}
