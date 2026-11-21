@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { demoIdeas, themes } from "../data/portal";
 import {
   blankDraft,
@@ -25,7 +25,41 @@ import {
 } from "../utils/staffWorkflow";
 import { useAdmin } from "./AdminContext";
 
+import {
+  createBrowserStore,
+  assertRecordUnchanged,
+} from "../services/browserPersistence";
+
 const PortalContext = createContext(null);
+function validPortalState(value) {
+  return Boolean(
+    value &&
+    Array.isArray(value.ideas) &&
+    Array.isArray(value.drafts) &&
+    Array.isArray(value.documents) &&
+    Array.isArray(value.messages) &&
+    value.profile &&
+    Array.isArray(value.profile.shareholders) &&
+    value.ideas.every(
+      (idea) =>
+        idea &&
+        typeof idea.id === "string" &&
+        Array.isArray(idea.versions) &&
+        Array.isArray(idea.feedback),
+    ) &&
+    value.drafts.every(
+      (draft) =>
+        draft &&
+        typeof draft.id === "string" &&
+        Array.isArray(draft.documentIds) &&
+        Array.isArray(draft.budgetItems),
+    ),
+  );
+}
+const revision = (value) => Number(value || 0);
+function expectedRevision(own, input) {
+  return own?.input === input ? own.saved : input;
+}
 
 const STORAGE_KEY = "ceda.applicant.v2";
 const LEGACY_KEY = "ceda.prototype.v1";
@@ -144,78 +178,177 @@ function initialState() {
 }
 export function PortalProvider({ children }) {
   const { staffUser } = useAuth();
-  const { programmes } = useAdmin();
-  const programmesRef = useRef(programmes);
-  programmesRef.current = programmes;
+  const admin = useAdmin();
   const [initial] = useState(initialState);
-  const [data, setData] = useState(initial.data);
-  const dataRef = useRef(initial.data);
-  const blocked = useRef(Boolean(initial.warning));
+  const [store] = useState(() =>
+    createBrowserStore({
+      key: STORAGE_KEY,
+      initialValue: initial.data,
+      validate: validPortalState,
+    }),
+  );
+  const [data, setData] = useState(store.getSnapshot);
+  const dataRef = useRef(data);
   const uploading = useRef(false);
+  const ownDraftSaves = useRef(new Map());
+  const ownProfileSave = useRef(null);
   const [documentsBusy, setDocumentsBusy] = useState(false);
-  const [storageWarning, setStorageWarning] = useState(initial.warning);
-
-  function commit(change) {
-    if (blocked.current) throw new Error(initial.warning);
-    const next = change(dataRef.current);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      const message =
-        "Changes could not be saved on this device. Check available browser storage and retry.";
-      setStorageWarning(message);
-      throw new Error(message);
-    }
-    dataRef.current = next;
-    setData(next);
-    setStorageWarning("");
-    return next;
+  const [storageWarning, setStorageWarning] = useState(store.getWarning);
+  useEffect(
+    () =>
+      store.subscribe((next, warning) => {
+        dataRef.current = next;
+        setData(next);
+        setStorageWarning(warning);
+      }),
+    [store],
+  );
+  function readCurrentState() {
+    const current = store.read();
+    dataRef.current = current;
+    return current;
   }
-  function createDraft(theme = "") {
+  function reloadWorkspace() {
+    const latest = readCurrentState();
+    ownDraftSaves.current.clear();
+    ownProfileSave.current = null;
+    setStorageWarning(store.getWarning());
+    return {
+      ...latest,
+      profile: {
+        ...latest.profile,
+        _editRevision: revision(latest.profile._editRevision),
+      },
+      drafts: latest.drafts.map((item) => ({
+        ...item,
+        editRevision: revision(item.editRevision),
+      })),
+    };
+  }
+  async function commit(change, onCommitted) {
+    try {
+      return await store.update(change, { onCommitted });
+    } catch (error) {
+      setStorageWarning(error.message);
+      throw error;
+    }
+  }
+  function checkDraftRevision(draft, current) {
+    const input = revision(draft.editRevision);
+    const expected = expectedRevision(
+      ownDraftSaves.current.get(draft.id),
+      input,
+    );
+    assertRecordUnchanged(
+      expected,
+      revision(current.editRevision),
+      "This draft",
+    );
+  }
+  function sameProfileValues(first, second) {
+    const withoutRevision = (value) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([key]) => key !== "_editRevision"),
+      );
+    return (
+      JSON.stringify(withoutRevision(first)) ===
+      JSON.stringify(withoutRevision(second))
+    );
+  }
+  function checkProfileRevision(profile, current) {
+    if (sameProfileValues(profile, current)) return;
+    const input = revision(profile._editRevision);
+    assertRecordUnchanged(
+      expectedRevision(ownProfileSave.current, input),
+      revision(current._editRevision),
+      "Your profile",
+    );
+  }
+  async function createDraft(theme = "") {
     if (theme && !themes.some((item) => item.id === theme))
       throw new Error("Choose an available theme.");
     const draft = blankDraft(crypto.randomUUID(), theme);
-    commit((current) => ({
+    await commit((current) => ({
       ...current,
       drafts: [draft, ...current.drafts],
       activeDraftId: draft.id,
     }));
     return draft.id;
   }
-  function saveDraft(draft, profile) {
+  async function saveDraft(draft, profile) {
     try {
-      commit((current) => {
-        if (!current.drafts.some((item) => item.id === draft.id))
-          throw new Error(
-            "This draft is no longer available. Return to My applications.",
-          );
-        const previous = current.drafts.find((item) => item.id === draft.id);
-        const next = {
-          ...draft,
-          documentIds: previous.documentIds,
-          updatedAt: new Date().toISOString(),
-        };
-        return {
-          ...current,
-          profile: profile ? copy(profile) : current.profile,
-          drafts: current.drafts.map((item) =>
-            item.id === next.id ? next : item,
-          ),
-          activeDraftId: next.id,
-        };
-      });
+      await commit(
+        (current) => {
+          const previous = current.drafts.find((item) => item.id === draft.id);
+          if (!previous)
+            throw new Error(
+              "This draft is no longer available. Return to My applications.",
+            );
+          checkDraftRevision(draft, previous);
+          if (profile) checkProfileRevision(profile, current.profile);
+          const next = {
+            ...draft,
+            documentIds: previous.documentIds,
+            editRevision: revision(previous.editRevision) + 1,
+            updatedAt: new Date().toISOString(),
+          };
+          return {
+            ...current,
+            profile:
+              profile && !sameProfileValues(profile, current.profile)
+                ? {
+                    ...copy(profile),
+                    _editRevision: revision(current.profile._editRevision) + 1,
+                  }
+                : current.profile,
+            drafts: current.drafts.map((item) =>
+              item.id === next.id ? next : item,
+            ),
+            activeDraftId: next.id,
+          };
+        },
+        (result) => {
+          ownDraftSaves.current.set(draft.id, {
+            input: revision(draft.editRevision),
+            saved: revision(
+              result.drafts.find((item) => item.id === draft.id).editRevision,
+            ),
+          });
+          if (profile)
+            ownProfileSave.current = {
+              input: revision(profile._editRevision),
+              saved: revision(result.profile._editRevision),
+            };
+        },
+      );
       return true;
     } catch (error) {
       setStorageWarning(error.message);
       return false;
     }
   }
-  function saveProfile(profile) {
-    commit((current) => ({
-      ...current,
-      profile: copy(profile),
-      profileUpdatedAt: new Date().toISOString(),
-    }));
+  async function saveProfile(profile) {
+    const result = await commit(
+      (current) => {
+        checkProfileRevision(profile, current.profile);
+        if (sameProfileValues(profile, current.profile)) return current;
+        return {
+          ...current,
+          profile: {
+            ...copy(profile),
+            _editRevision: revision(current.profile._editRevision) + 1,
+          },
+          profileUpdatedAt: new Date().toISOString(),
+        };
+      },
+      (result) => {
+        ownProfileSave.current = {
+          input: revision(profile._editRevision),
+          saved: revision(result.profile._editRevision),
+        };
+      },
+    );
+    return result.profile;
   }
   async function uploadDocuments(
     files,
@@ -244,7 +377,7 @@ export function PortalProvider({ children }) {
       const prepared = [];
       for (const file of files)
         prepared.push(await prepareDocument(file, category, expiresAt));
-      const current = dataRef.current;
+      const current = readCurrentState();
       const plan = documentUploadPlan(prepared, current.documents);
       const attachedIds = plan.ids;
       const target = current.drafts.find((draft) => draft.id === draftId);
@@ -255,15 +388,28 @@ export function PortalProvider({ children }) {
       if (target && new Set([...target.documentIds, ...attachedIds]).size > 10)
         throw new Error("Attach up to 10 files per application.");
       await saveDocumentFiles(plan.files);
-      commit((latest) => {
+      await commit((latest) => {
         const liveDraft = latest.drafts.find((draft) => draft.id === draftId);
         if (draftId && !liveDraft)
           throw new Error(
             "The draft changed while files were saving. Your files remain in the document library.",
           );
+        if (
+          liveDraft &&
+          new Set([...liveDraft.documentIds, ...attachedIds]).size > 10
+        )
+          throw new Error("Attach up to 10 files per application.");
         return {
           ...latest,
-          documents: [...latest.documents, ...plan.documents],
+          documents: [
+            ...latest.documents,
+            ...plan.documents.filter(
+              (document) =>
+                !latest.documents.some(
+                  (existing) => existing.id === document.id,
+                ),
+            ),
+          ],
           drafts: latest.drafts.map((draft) =>
             draft.id === draftId
               ? {
@@ -283,8 +429,8 @@ export function PortalProvider({ children }) {
       setDocumentsBusy(false);
     }
   }
-  function attachDocument(draftId, documentId, remove = false) {
-    commit((current) => {
+  async function attachDocument(draftId, documentId, remove = false) {
+    await commit((current) => {
       const draft = current.drafts.find((item) => item.id === draftId);
       if (
         !draft ||
@@ -306,44 +452,63 @@ export function PortalProvider({ children }) {
       };
     });
   }
-  function startRevision(id) {
-    const current = dataRef.current;
-    const source = current.ideas.find((idea) => idea.id === id);
-    if (!source || !canUpdate(source))
-      throw new Error("This application is not currently open for changes.");
-    const existing = current.drafts.find((draft) => draft.revisionOf === id);
-    if (existing) return existing.id;
-    const draft = {
-      ...blankDraft(crypto.randomUUID(), source.theme),
-      ...Object.fromEntries(
-        ["title", "theme", "team", "problem", "solution", "impact"].map(
-          (key) => [key, source[key]],
+  async function startRevision(id) {
+    let draftId;
+    await commit((current) => {
+      const source = current.ideas.find((idea) => idea.id === id);
+      if (!source || !canUpdate(source))
+        throw new Error("This application is not currently open for changes.");
+      const existing = current.drafts.find(
+        (draft) =>
+          draft.revisionOf === id &&
+          draft.baseVersion === source.versions.length,
+      );
+      if (existing) {
+        draftId = existing.id;
+        return current;
+      }
+      const draft = {
+        ...blankDraft(crypto.randomUUID(), source.theme),
+        programmeId: source.programmeId || programme.id,
+        ...Object.fromEntries(
+          ["title", "theme", "team", "problem", "solution", "impact"].map(
+            (key) => [key, source[key]],
+          ),
         ),
-      ),
-      documentIds: source.documentIds || [],
-      budgetItems: copy(source.budgetItems || []),
-      fundingRequested: source.fundingRequested || "",
-      budgetNotApplicable: source.budgetNotApplicable || false,
-      revisionOf: id,
-      revisionKind:
-        source.revisionRequest?.status === "open" ? "correction" : "amendment",
-      baseVersion: source.versions.length,
-    };
-    commit((latest) => ({
-      ...latest,
-      drafts: [draft, ...latest.drafts],
-      activeDraftId: draft.id,
-    }));
-    return draft.id;
+        documentIds: source.documentIds || [],
+        budgetItems: copy(source.budgetItems || []),
+        fundingRequested: source.fundingRequested || "",
+        budgetNotApplicable: source.budgetNotApplicable || false,
+        revisionOf: id,
+        revisionKind:
+          source.revisionRequest?.status === "open"
+            ? "correction"
+            : "amendment",
+        baseVersion: source.versions.length,
+        editRevision: 0,
+      };
+      draftId = draft.id;
+      return {
+        ...current,
+        drafts: [draft, ...current.drafts],
+        activeDraftId: draft.id,
+      };
+    });
+    return draftId;
   }
   async function submitApplication(draft, profile, confirmed) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
-    const before = dataRef.current;
+    const before = readCurrentState();
     if (!before.drafts.some((item) => item.id === draft.id))
       throw new Error(
         "This draft has already been submitted or is no longer available.",
       );
+    checkDraftRevision(
+      draft,
+      before.drafts.find((item) => item.id === draft.id),
+    );
+    checkProfileRevision(profile, before.profile);
     draft = {
       ...draft,
       documentIds: before.drafts.find((item) => item.id === draft.id)
@@ -353,9 +518,11 @@ export function PortalProvider({ children }) {
       ? before.ideas.find((idea) => idea.id === draft.revisionOf)
       : null;
     const windowBlocker = submissionWindowBlocker(
-      programmesRef.current.find(
-        (item) => item.id === (draft.programmeId || programme.id),
-      ),
+      admin
+        .readCurrentState()
+        .programmes.find(
+          (item) => item.id === (draft.programmeId || programme.id),
+        ),
       draft,
       source,
     );
@@ -389,13 +556,23 @@ export function PortalProvider({ children }) {
         );
     }
     let id;
-    commit((current) => {
+    await commit((current) => {
       if (!current.drafts.some((item) => item.id === draft.id))
         throw new Error("This draft has already been submitted.");
+      const liveDraft = current.drafts.find((item) => item.id === draft.id);
+      checkDraftRevision(draft, liveDraft);
+      checkProfileRevision(profile, current.profile);
+      assertRecordUnchanged(
+        draft.documentIds,
+        liveDraft.documentIds,
+        "The attached documents",
+      );
       const windowBlocker = submissionWindowBlocker(
-        programmesRef.current.find(
-          (item) => item.id === (draft.programmeId || programme.id),
-        ),
+        admin
+          .readCurrentState()
+          .programmes.find(
+            (item) => item.id === (draft.programmeId || programme.id),
+          ),
         draft,
         source,
       );
@@ -441,7 +618,10 @@ export function PortalProvider({ children }) {
       };
       return {
         ...current,
-        profile: copy(profile),
+        profile: {
+          ...copy(profile),
+          _editRevision: revision(current.profile._editRevision) + 1,
+        },
         ideas: [idea, ...current.ideas.filter((item) => item.id !== id)],
         drafts: current.drafts.filter((item) => item.id !== draft.id),
         activeDraftId: null,
@@ -462,14 +642,14 @@ export function PortalProvider({ children }) {
   }
   // Staff records and applicant-visible effects share one durable write. Private scores
   // stay in staffRecords; only correction instructions and released outcomes reach the applicant view.
-  function commitStaffWorkflow(id, record) {
+  async function commitStaffWorkflow(id, recordOrChange) {
     assertStaffRole(staffUser, [
       "eligibility-officer",
       "evaluator",
       "adjudicator",
       "administrator",
     ]);
-    commit((current) => {
+    await commit((current) => {
       const source = current.ideas.find((idea) => idea.id === id);
       if (!source) throw new Error("Application not found.");
       const application = {
@@ -480,6 +660,14 @@ export function PortalProvider({ children }) {
         current.staffRecords?.[id],
         application,
       );
+      const record =
+        typeof recordOrChange === "function"
+          ? recordOrChange({
+              portal: current,
+              admin: admin.readCurrentState(),
+              previous,
+            })
+          : recordOrChange;
       if (record.revision !== (previous.revision || 0) + 1)
         throw new Error("This staff record changed. Reopen it before saving.");
       if (record.applicationVersion !== application.version)
@@ -588,8 +776,8 @@ export function PortalProvider({ children }) {
       };
     });
   }
-  function markMessageRead(id) {
-    commit((current) => ({
+  async function markMessageRead(id) {
+    await commit((current) => ({
       ...current,
       messages: current.messages.map((message) =>
         message.id === id
@@ -598,8 +786,8 @@ export function PortalProvider({ children }) {
       ),
     }));
   }
-  function markAllMessagesRead() {
-    commit((current) => ({
+  async function markAllMessagesRead() {
+    await commit((current) => ({
       ...current,
       messages: current.messages.map((message) => ({
         ...message,
@@ -607,12 +795,12 @@ export function PortalProvider({ children }) {
       })),
     }));
   }
-  function requestReview(id, grounds) {
+  async function requestReview(id, grounds) {
     if (!grounds.trim() || grounds.length > 3000)
       throw new Error(
         "Explain your grounds for review in 3,000 characters or fewer.",
       );
-    commit((current) => {
+    await commit((current) => {
       const idea = current.ideas.find((item) => item.id === id);
       if (!idea?.outcome?.canRequestReview || idea.reviewRequest)
         throw new Error(
@@ -635,8 +823,66 @@ export function PortalProvider({ children }) {
       };
     });
   }
-  function setReferralConsent(id, consent) {
-    commit((current) => ({
+  async function respondToReviewRequest(id, input) {
+    assertStaffRole(staffUser, ["administrator", "adjudicator"]);
+    if (!["in_review", "resolved"].includes(input.status))
+      throw new Error("Choose a review request status.");
+    const response = String(input.response || "").trim();
+    if (response.length > 3000 || (input.status === "resolved" && !response))
+      throw new Error("Explain the resolution in 3,000 characters or fewer.");
+    let request;
+    await commit((current) => {
+      const idea = current.ideas.find((item) => item.id === id);
+      if (
+        !idea?.outcome?.releasedAt ||
+        !["not_selected", "not_eligible"].includes(idea.outcome.result) ||
+        !idea.reviewRequest?.grounds?.trim()
+      )
+        throw new Error(
+          "A review request is available only for a released negative outcome with submitted grounds.",
+        );
+      const previous = idea.reviewRequest;
+      if (Object.hasOwn(input, "expectedUpdatedAt"))
+        assertRecordUnchanged(
+          input.expectedUpdatedAt,
+          previous.updatedAt ||
+            previous.respondedAt ||
+            previous.createdAt ||
+            null,
+          "This review request",
+        );
+      const now = new Date().toISOString();
+      request = {
+        ...previous,
+        status: input.status,
+        response,
+        updatedAt: now,
+        respondedAt: now,
+        respondedBy: staffUser.name,
+        resolvedAt: input.status === "resolved" ? now : null,
+      };
+      return {
+        ...current,
+        ideas: current.ideas.map((item) =>
+          item.id === id ? { ...item, reviewRequest: request } : item,
+        ),
+        messages: [
+          {
+            id: crypto.randomUUID(),
+            applicationId: id,
+            title: "Review request update",
+            message: response || "Your review request is being considered.",
+            createdAt: now,
+            readAt: null,
+          },
+          ...current.messages,
+        ],
+      };
+    });
+    return request;
+  }
+  async function setReferralConsent(id, consent) {
+    await commit((current) => ({
       ...current,
       ideas: current.ideas.map((idea) =>
         idea.id === id
@@ -659,6 +905,17 @@ export function PortalProvider({ children }) {
     <PortalContext.Provider
       value={{
         ...data,
+        profile: {
+          ...data.profile,
+          _editRevision: revision(data.profile._editRevision),
+        },
+        drafts: data.drafts.map((item) => ({
+          ...item,
+          editRevision: revision(item.editRevision),
+        })),
+        readCurrentState,
+        reloadWorkspace,
+        respondToReviewRequest,
         draft,
         storageWarning,
         documentsBusy,
