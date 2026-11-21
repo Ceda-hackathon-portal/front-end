@@ -109,7 +109,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
           transform: "translateX(-50%)",
           zIndex: 9999,
           width: isMobile ? "clamp(320px, 74%, 720px)" : "calc(100% - 48px)",
-          maxWidth: 930,
+          maxWidth: 1080,
           transition: "top 0.3s ease, box-shadow 0.3s ease",
         }}
       >
@@ -122,8 +122,8 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
             backdropFilter: "blur(18px) saturate(180%)",
             WebkitBackdropFilter: "blur(18px) saturate(180%)",
             borderRadius: isMobile ? 24 : 999,
-            padding: isMobile ? "6px 12px" : "6px 18px",
-            minHeight: isMobile ? 50 : 58,
+            padding: isMobile ? "8px 14px" : "10px 26px",
+            minHeight: isMobile ? 58 : 72,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -152,7 +152,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
               alt="CEDA"
               width="160"
               height="98"
-              style={{ height: isMobile ? 30 : 36, width: "auto", display: "block", objectFit: "contain" }}
+              style={{ height: isMobile ? 38 : 50, width: "auto", display: "block", objectFit: "contain" }}
             />
           </Link>
 
@@ -167,7 +167,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 2,
+                gap: 4,
                 listStyle: "none",
                 margin: 0,
                 padding: 0,
@@ -198,18 +198,18 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       onMouseLeave: (event) => {
                         if (activeDropdown !== link.label) {
                           event.currentTarget.style.background = "transparent";
-                          event.currentTarget.style.color = "#1a2e44";
+                          event.currentTarget.style.color = "#0B1F3A";
                         }
                       },
                       style: {
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                        padding: "6px 10px",
+                        padding: "9px 16px",
                         borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        color: "#1a2e44",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "#0B1F3A",
                         textDecoration: "none",
                         transition: "background 0.18s, color 0.18s",
                         background:
@@ -223,8 +223,8 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
 
                     const childrenIcon = link.children && (
                       <svg
-                        width="10"
-                        height="10"
+                        width="12"
+                        height="12"
                         viewBox="0 0 10 10"
                         fill="none"
                         style={{
@@ -272,7 +272,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                         boxShadow:
                           "0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
                         border: "1px solid rgba(0,0,0,0.07)",
-                        minWidth: 210,
+                        minWidth: 240,
                         zIndex: 100,
                         animation: "dropIn 0.18s ease",
                       }}
@@ -281,13 +281,13 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                         const isChildExternal = child.href.startsWith("http");
                         const childStyle = {
                           display: "block",
-                          padding: "8px 12px",
+                          padding: "10px 16px",
                           borderRadius: 9,
-                          fontSize: 12,
-                          color: "#1a2e44",
+                          fontSize: 14,
+                          color: "#0B1F3A",
                           textDecoration: "none",
                           fontFamily: "'DM Sans', sans-serif",
-                          fontWeight: 400,
+                          fontWeight: 500,
                           transition: "background 0.15s",
                           whiteSpace: "nowrap",
                         };
@@ -341,15 +341,15 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
             style={{
               display: "flex",
               alignItems: "center",
-              gap: isMobile ? 5 : 6,
+              gap: isMobile ? 6 : 8,
             }}
           >
             <Link
               to="/search"
               aria-label="Open search"
               style={{
-                width: 30,
-                height: 30,
+                width: 38,
+                height: 38,
                 borderRadius: "50%",
                 background: "#eef2f7",
                 color: "#1A3A6B",
@@ -360,7 +360,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                 flexShrink: 0,
               }}
             >
-              <Search size={14} />
+              <Search size={17} />
             </Link>
 
             <button
@@ -371,9 +371,9 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                 }
               }}
               style={{
-                padding: "7px 14px",
+                padding: "11px 22px",
                 borderRadius: 999,
-                fontSize: 11,
+                fontSize: 13.5,
                 fontWeight: 600,
                 color: "#ffffff",
                 background: "#050505",
@@ -415,15 +415,15 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                 >
                   <div
                     style={{
-                      width: 24,
-                      height: 24,
+                      width: 32,
+                      height: 32,
                       borderRadius: "50%",
                       background: "#1A3A6B",
                       color: "#ffffff",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: 700,
                       fontFamily: "'Inter', sans-serif",
                     }}
@@ -431,7 +431,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                     {getUserInitials(user.name)}
                   </div>
                   {!isMobile && (
-                    <ChevronDown size={14} color="#1A3A6B" style={{ transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                    <ChevronDown size={16} color="#1A3A6B" style={{ transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                   )}
                 </button>
 
@@ -456,7 +456,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{user.name}</div>
                       <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, fontFamily: "'Inter', sans-serif" }}>{user.email || user.phone || 'CEDA portal'}</div>
                     </div>
-                    
+
                     <div style={{ display: "grid", gap: 4 }}>
                       <Link
                         to={roleHome(user?.role)}
@@ -480,7 +480,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                         <LayoutDashboard size={18} color="#1A3A6B" />
                         My Dashboard
                       </Link>
-                      
+
                       <button
                         type="button"
                         onClick={handleLogout}
@@ -531,8 +531,8 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                 >
                   <div
                     style={{
-                      width: 24,
-                      height: 24,
+                      width: 32,
+                      height: 32,
                       borderRadius: "50%",
                       background: "#f1f5f9",
                       color: "#000000",
@@ -541,7 +541,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       justifyContent: "center",
                     }}
                   >
-                    <User size={14} />
+                    <User size={17} />
                   </div>
                 </button>
 
@@ -566,7 +566,7 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome to CEDA</div>
                       <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, fontFamily: "'Inter', sans-serif" }}>Sign in to continue</div>
                     </div>
-                    
+
                     <div style={{ display: "grid", gap: 4 }}>
                       <Link
                         to="/login"
@@ -608,13 +608,13 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
                 alignItems: "center",
                 justifyContent: "center",
                 padding: 4,
-                width: 30,
-                height: 30,
+                width: 38,
+                height: 38,
                 borderRadius: "50%",
                 color: "#0b1f3a",
               }}
             >
-              {open ? <X size={18} /> : <Menu size={18} />}
+              {open ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
 

@@ -1,0 +1,109 @@
+/* GuidelinesPage only. Everything is scoped under .guidelines-page so other
+   pages that share .simple-steps / .guide-details are not affected. */
+
+.guidelines-page .public-page-header { margin-bottom: 34px; }
+.guidelines-page .public-page-header h1 {
+  font-size: clamp(40px, 5.2vw, 64px);
+  font-weight: 800;
+  letter-spacing: -.05em;
+  line-height: 1.05;
+  color: #0B1F3A;
+}
+.guidelines-page .public-page-header h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: #1A3A6B;
+}
+
+/* Step list — mirrors .simple-service-list from the Search page */
+.guidelines-page .simple-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 30px;
+  border-top: 2px solid #0B1F3A;
+  max-width: none;
+}
+.guidelines-page .simple-steps > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 26px 4px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: color .2s ease;
+}
+
+/* Step number uses the same circular badge as .search-arrow */
+.guidelines-page .simple-steps > li > span {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0B1F3A;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.guidelines-page .simple-steps > li:hover > span {
+  background: #0B1F3A;
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.guidelines-page .simple-steps h2 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(19px, 2.2vw, 24px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #0B1F3A;
+  margin: 0 0 6px;
+  transition: color .2s ease;
+}
+.guidelines-page .simple-steps > li:hover h2 { color: #1A3A6B; }
+.guidelines-page .simple-steps p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+/* Details block — same bordered list rhythm as .simple-service-list */
+.guidelines-page .guide-details-list {
+  border-top: 2px solid #0B1F3A;
+  margin-bottom: 30px;
+}
+.guidelines-page .guide-details {
+  padding: 22px 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.guidelines-page .guide-details summary {
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(17px, 2vw, 20px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #0B1F3A;
+  transition: color .2s ease;
+}
+.guidelines-page .guide-details summary:hover { color: #1A3A6B; }
+.guidelines-page .guide-details p {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+/* CTA */
+.guidelines-page .button.button-primary { margin-top: 6px; }
+
+@media (max-width: 700px) {
+  .guidelines-page .simple-steps > li { padding: 22px 2px; gap: 14px; }
+  .guidelines-page .simple-steps > li > span { width: 36px; height: 36px; font-size: 12px; }
+  .guidelines-page .guide-details { padding: 18px 2px; }
+}

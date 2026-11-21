@@ -1,200 +1,148 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
-const footerLinkStyle = {
-  color: 'rgba(255,255,255,0.68)',
-  fontSize: 14,
-  textDecoration: 'none',
-  lineHeight: 1.8,
-}
+const services = [
+  ['Submit an idea', '/workspace/new', true],
+  ['My submissions', '/workspace', true],
+  ['Programmes', '/challenges'],
+  ['Submission guide', '/how-it-works'],
+  ['Services', '/services'],
+]
+
+const organisation = [
+  ['About CEDA', 'https://www.ceda.co.bw/'],
+  ['Help', '/help'],
+  ['Guidelines', '/how-it-works'],
+  ['Privacy', '/privacy'],
+]
+
+const highlights = ['Idea submission', 'Evaluation', 'Feedback', 'Progress tracking', 'CEDA portal']
+
+const legalLinks = [
+  ['Privacy Policy', '/privacy'],
+  ['Security', '/privacy'],
+  ['Help', '/help'],
+]
 
 export default function Footer() {
-  const { requireAuth } = useAuth();
-  const navigate = useNavigate();
+  const { requireAuth } = useAuth()
+  const navigate = useNavigate()
+
+  function renderLink(label, href, secure) {
+    if (href.startsWith('http')) {
+      return <a className="cf-link" href={href} target="_blank" rel="noopener noreferrer">{label}</a>
+    }
+    if (secure) {
+      return (
+        <a className="cf-link" href={href} onClick={(e) => { e.preventDefault(); if (requireAuth(href)) navigate(href) }}>
+          {label}
+        </a>
+      )
+    }
+    return <Link className="cf-link" to={href}>{label}</Link>
+  }
+
   return (
-    <footer
-      style={{
-        background:
-          'radial-gradient(circle at top left, rgba(102,67,45,0.28), transparent 42%), linear-gradient(180deg, #211b17 0%, #100d0b 100%)',
-        color: 'rgba(255,255,255,0.72)',
-        marginTop: 'auto',
-        overflow: 'hidden',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 -18px 50px rgba(27,18,12,0.22)',
-        position: 'relative',
-      }}
-    >
-      <div
-        style={{
-          height: 18,
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0))',
-        }}
-      />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '72px 24px 28px', width: '100%', boxSizing: 'border-box' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 32,
-            alignItems: 'start',
-            marginBottom: 56,
-          }}
-        >
-          <div style={{ maxWidth: 540 }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '8px 14px',
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                marginBottom: 18,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.72)',
-                }}
-              >
-                CEDA
-              </span>
-            </div>
-
-            <p
-              style={{
-                fontSize: 28,
-                lineHeight: 1.15,
-                color: '#ffffff',
-                maxWidth: 540,
-                marginBottom: 18,
-                fontFamily: "'Syne', sans-serif",
-                fontWeight: 700,
-              }}
-            >
-              Finance. Develop. Sustain.
-            </p>
-
-            <p style={{ fontSize: 15, lineHeight: 1.8, maxWidth: 440, marginBottom: 18 }}>
-              Citizen Entrepreneurial Development Agency.
-            </p>
-
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
-              Botswana
-            </p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>
-              www.ceda.co.bw
-            </p>
-          </div>
-
+    <footer className="cf-footer">
+      <div className="cf-shell">
+        <div className="cf-columns">
           <div>
-            <p
-              style={{
-                fontWeight: 600,
-                color: '#ffffff',
-                marginBottom: 14,
-                fontSize: 14,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Services
-            </p>
-            {[['Submit an idea', '/workspace/new'], ['My submissions', '/workspace'], ['Programmes', '/challenges'], ['Submission guide', '/how-it-works'], ['Services', '/services']].map(([label, href]) => {
-              const secure = href === '/workspace' || href === '/workspace/new';
-              return (
-                <div key={href}>
-                  {secure ? (
-                    <a href={href} onClick={(e) => { e.preventDefault(); if (requireAuth(href)) navigate(href); }} style={footerLinkStyle}>
-                      {label}
-                    </a>
-                  ) : (
-                    <Link to={href} style={footerLinkStyle}>
-                      {label}
-                    </Link>
-                  )}
-                </div>
-              );
-            })}
+            <Link to="/" className="cf-logo" aria-label="CEDA, Citizen Entrepreneurial Development Agency: home">
+              <img src="/images/ceda-logo.png" alt="CEDA" width="160" height="98" />
+            </Link>
+            <ul className="cf-list">
+              <li><span className="cf-text">Botswana</span></li>
+              <li>{renderLink('www.ceda.co.bw', 'https://www.ceda.co.bw/')}</li>
+            </ul>
           </div>
 
-          <div>
-            <p
-              style={{
-                fontWeight: 600,
-                color: '#ffffff',
-                marginBottom: 14,
-                fontSize: 14,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Organisation
-            </p>
-            {[['About CEDA', 'https://www.ceda.co.bw/'], ['Help', '/help'], ['Guidelines', '/how-it-works'], ['Privacy', '/privacy']].map(([label, href]) => (
-              <div key={href}>
-                <Link to={href} style={footerLinkStyle}>
-                  {label}
-                </Link>
-              </div>
-            ))}
-          </div>
+          <nav aria-label="Services">
+            <h2 className="cf-heading">Services</h2>
+            <ul className="cf-list">
+              {services.map(([label, href, secure]) => (
+                <li key={label}>{renderLink(label, href, secure)}</li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Organisation">
+            <h2 className="cf-heading">Organisation</h2>
+            <ul className="cf-list">
+              {organisation.map(([label, href]) => (
+                <li key={label}>{renderLink(label, href)}</li>
+              ))}
+            </ul>
+          </nav>
         </div>
 
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 32, paddingTop: 24 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
-            {[
-              'Idea submission',
-              'Evaluation',
-              'Feedback',
-              'Progress tracking',
-              'CEDA portal',
-            ].map(label => (
-              <span key={label} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 50, padding: '5px 14px', fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>
-                {label}
-              </span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/privacy" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="/privacy" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Security</a>
-            <a href="/help" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Help</a>
-          </div>
-        </div>
+        <p className="cf-highlights">{highlights.join('  ·  ')}</p>
 
-        <div
-          style={{
-            paddingTop: 28,
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 8,
-            marginBottom: 36,
-          }}
-        >
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-            (c) 2026 Citizen Entrepreneurial Development Agency. All rights reserved.
-          </p>
-          <p
-            style={{
-              fontSize: 12,
-              color: 'rgba(255,255,255,0.45)',
-              fontStyle: 'italic',
-            }}
-          >
-            Finance. Develop. Sustain.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div className="footer-wordmark">CEDA</div>
+        <div className="cf-bottom">
+          {legalLinks.map(([label, href]) => (
+            <span key={label}>{renderLink(label, href)}</span>
+          ))}
         </div>
       </div>
+
+      <style>{`
+        .cf-footer {
+          background: #fafafa;
+          color: #111111;
+          font-family: 'Poppins', sans-serif;
+          margin-top: auto;
+          padding: 64px 0 0;
+        }
+        .cf-shell { max-width: 1280px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
+        .cf-columns {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 36px 28px;
+          align-items: start;
+        }
+        .cf-heading {
+          font-family: 'Poppins', sans-serif;
+          font-size: 17px;
+          font-weight: 400;
+          letter-spacing: 0;
+          line-height: 1.4;
+          color: #111111;
+          margin: 0 0 26px;
+        }
+        .cf-logo { display: inline-block; margin: 0 0 22px; }
+        .cf-logo img { display: block; width: 170px; height: auto; }
+        .cf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+        .cf-link, .cf-text {
+          font-size: 15px;
+          font-weight: 300;
+          line-height: 1.5;
+          color: #5f6672;
+          text-decoration: none;
+          transition: color .2s ease;
+        }
+        .cf-link:hover { color: #000000; text-decoration: underline; }
+        .cf-highlights {
+          margin: 110px 0 44px;
+          text-align: center;
+          font-size: 15px;
+          font-weight: 400;
+          letter-spacing: .1em;
+          text-transform: uppercase;
+          line-height: 1.8;
+          color: #3b2fd0;
+        }
+        .cf-bottom {
+          border-top: 1px solid #e5e7eb;
+          padding: 36px 0 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 20px 32px;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 700px) {
+          .cf-highlights { margin: 64px 0 32px; font-size: 12px; }
+        }
+      `}</style>
     </footer>
   )
 }

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 :root {
   font-family: Inter, sans-serif;
   color: #111827;
@@ -119,8 +120,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 }
 .ceda-hero-divider { width: 1px; height: clamp(70px, 9vw, 120px); background: #ffffff40; flex-shrink: 0; }
 .ceda-hero-identity h1 {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
   font-size: clamp(30px, 4.8vw, 64px);
   line-height: 1.08;
   letter-spacing: -.025em;
@@ -146,7 +147,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 .guide-details + .button { margin-top: 30px; }
 .service-search { margin-bottom: 32px; }
 .auth-page { padding: 150px 24px 85px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 64px; max-width: 1180px; align-items: start; }
-.auth-story { min-height: 620px; background: linear-gradient(120deg, #050b15bb, #0b1f3a4d), url('/images/ceda-innovation.png') center/cover; border-radius: 30px; padding: 50px 40px; display: flex; flex-direction: column; justify-content: flex-end; color: white; }
+.auth-story { min-height: 620px; background: linear-gradient(120deg, #050b15bb, #0b1f3a4d), url('/images/login.jpg') center/cover; border-radius: 30px; padding: 50px 40px; display: flex; flex-direction: column; justify-content: flex-end; color: white; }
 .auth-story .eyebrow { color: #cbd5e1; }
 .auth-story h1 { font-size: 44px; margin-top: 18px; line-height: 1.2; }
 .auth-story p { font-size: 14px; color: #cbd5e1; margin-top: 18px; }

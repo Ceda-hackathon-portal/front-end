@@ -1,0 +1,108 @@
+/* SearchPage only. Everything is scoped under .search-page so the Services and
+   Programmes pages (which share .simple-service-list) are not affected. */
+
+.search-page .public-page-header { margin-bottom: 34px; }
+.search-page .public-page-header h1 {
+  font-size: clamp(40px, 5.2vw, 64px);
+  font-weight: 800;
+  letter-spacing: -.05em;
+  line-height: 1.05;
+  color: #0B1F3A;
+}
+.search-page .public-page-header h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: #1A3A6B;
+}
+
+.search-field { position: relative; margin-bottom: 30px; }
+.search-field > svg {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0B1F3A;
+  pointer-events: none;
+}
+.search-page .search-input {
+  height: 64px;
+  padding: 0 24px 0 58px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #0B1F3A;
+  border: 2px solid #0B1F3A;
+  border-radius: 14px;
+  background: #ffffff;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.search-page .search-input::placeholder { color: #6b7280; font-weight: 400; }
+.search-page .search-input:focus,
+.search-page .search-input:focus-visible {
+  outline: none;
+  border-color: #1A3A6B;
+  box-shadow: 0 0 0 4px rgba(26, 58, 107, .15);
+}
+
+.search-count {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.search-page .simple-service-list { border-top: 2px solid #0B1F3A; max-width: none; }
+.search-page .simple-service-list > a {
+  padding: 26px 4px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: color .2s ease;
+}
+.search-page .simple-service-list strong {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(19px, 2.2vw, 24px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #0B1F3A;
+  transition: color .2s ease;
+}
+.search-page .simple-service-list > a:hover strong { color: #1A3A6B; }
+.search-page .simple-service-list mark {
+  background: transparent;
+  color: #1A3A6B;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-decoration-color: #94a3b8;
+  text-underline-offset: 4px;
+}
+
+.search-arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0B1F3A;
+  flex-shrink: 0;
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.search-page .simple-service-list > a:hover .search-arrow {
+  background: #0B1F3A;
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.search-page .search-empty { padding: 30px 4px 10px; font-size: 17px; font-weight: 600; color: #0B1F3A; }
+.search-page .search-empty small { display: block; margin-top: 6px; font-size: 14px; font-weight: 400; color: #64748b; }
+
+@media (max-width: 700px) {
+  .search-page .search-input { height: 56px; font-size: 16px; padding-left: 52px; }
+  .search-field > svg { left: 18px; }
+  .search-page .simple-service-list > a { padding: 22px 2px; }
+  .search-arrow { width: 36px; height: 36px; }
+}
