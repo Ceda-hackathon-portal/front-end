@@ -13,7 +13,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useStaffWorkflow } from "../../context/StaffWorkflowContext";
 import { automaticChecks, reviewCriteria } from "../../utils/staffWorkflow";
-import { displayDateTime } from "../../utils/portal";
+import { displayDate, displayDateTime } from "../../utils/portal";
 import { downloadDocument, fileSize } from "../../services/applicantDocuments";
 import { ApplicationStatus, applicationStage } from "./StaffApplicationsPage";
 import StaffDocumentPreview from "../../components/staff/StaffDocumentPreview";
@@ -89,6 +89,9 @@ function ApplicationRecord({ application }) {
   const ownReview =
     record.reviews.find((review) => review.reviewerId === staffUser?.id) ||
     record.reviews[0];
+  const screeningBaseline = useRef(record.screening?.at || null);
+  const decisionBaseline = useRef(record.decision?.at || null);
+  const reviewBaseline = useRef(ownReview?.updatedAt || null);
   const canScreen = ["eligibility-officer", "administrator"].includes(role);
   const canReview = role === "evaluator";
   const canDecide = ["adjudicator", "administrator"].includes(role);
@@ -166,20 +169,43 @@ function ApplicationRecord({ application }) {
       setBusy(false);
     }
   }
+  async function persistScreening() {
+    const saved = await screenApplication(application.id, {
+      result: screenResult,
+      reason: screenReason,
+      dueAt: dueAt ? new Date(dueAt + "+02:00").toISOString() : "",
+      expectedScreeningAt: screeningBaseline.current,
+    });
+    screeningBaseline.current = saved.screening?.at || null;
+  }
+  async function persistDecision(publish) {
+    const saved = await saveDecision(application.id, {
+      result: decision,
+      reason: decisionReason,
+      nextSteps,
+      publish,
+      expectedDecisionAt: decisionBaseline.current,
+    });
+    decisionBaseline.current = saved.decision?.at || null;
+  }
   function submitReview(submit) {
     return act(
-      () => {
+      async () => {
         if (submit && !conflict)
           throw new Error(
             "Declare whether you have a conflict of interest before submitting.",
           );
-        return saveReview(application.id, {
+        const saved = await saveReview(application.id, {
+          expectedReviewUpdatedAt: reviewBaseline.current,
           scores,
           reasons,
           comment,
           conflict: conflict ? conflict === "yes" : null,
           submit,
         });
+        reviewBaseline.current =
+          saved.reviews.find((item) => item.reviewerId === staffUser.id)
+            ?.updatedAt || null;
       },
       conflict === "yes"
         ? "Conflict recorded. This application must be reassigned."
@@ -260,6 +286,57 @@ function ApplicationRecord({ application }) {
                     {application.applicant.registrationNumber ||
                       "Company number not supplied"}
                   </p>
+                  <p>
+                    Company registration declared:{" "}
+                    {application.applicant.registered === "yes"
+                      ? "Registered"
+                      : application.applicant.registered === "no"
+                        ? "Not registered"
+                        : "Not supplied"}
+                  </p>
+                  {application.applicant.shareholders?.length > 0 && (
+                    <div className="sw-shareholder-evidence">
+                      <h3>Shareholder declarations</h3>
+                      <ul>
+                        {application.applicant.shareholders.map(
+                          (person, index) => (
+                            <li key={person.id || index}>
+                              <strong>{person.name}</strong>
+                              <dl>
+                                <div>
+                                  <dt>Date of birth</dt>
+                                  <dd>
+                                    {person.dateOfBirth
+                                      ? displayDate(person.dateOfBirth)
+                                      : "Not supplied"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Botswana citizen</dt>
+                                  <dd>
+                                    {person.citizen === "yes"
+                                      ? "Yes"
+                                      : person.citizen === "no"
+                                        ? "No"
+                                        : "Not supplied"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Ownership</dt>
+                                  <dd>
+                                    {person.percent !== "" &&
+                                    person.percent != null
+                                      ? person.percent + "%"
+                                      : "Not supplied"}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
               {[
@@ -275,6 +352,22 @@ function ApplicationRecord({ application }) {
               ))}
               <div className="sw-answer">
                 <h3>Budget</h3>
+                {application.fundingRequested !== "" &&
+                  application.fundingRequested != null && (
+                    <p>
+                      <strong>
+                        Funding requested: BWP{" "}
+                        {Number(application.fundingRequested).toLocaleString(
+                          "en-BW",
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          },
+                        )}
+                      </strong>
+                    </p>
+                  )}
+
                 {application.budgetItems?.length ? (
                   <ul className="sw-budget">
                     {application.budgetItems.map((item, index) => (
@@ -351,14 +444,7 @@ function ApplicationRecord({ application }) {
                   onSubmit={(event) => {
                     event.preventDefault();
                     act(
-                      () =>
-                        screenApplication(application.id, {
-                          result: screenResult,
-                          reason: screenReason,
-                          dueAt: dueAt
-                            ? new Date(dueAt + "+02:00").toISOString()
-                            : "",
-                        }),
+                      () => persistScreening(),
                       "Screening result saved. Applicant messages update for locally submitted records.",
                     );
                   }}
@@ -618,12 +704,7 @@ function ApplicationRecord({ application }) {
                         throw new Error(
                           "Confirm that you have checked the decision before releasing it.",
                         );
-                      return saveDecision(application.id, {
-                        result: decision,
-                        reason: decisionReason,
-                        nextSteps,
-                        publish: true,
-                      });
+                      return persistDecision(true);
                     }, "Outcome released locally. The applicant record and message are updated for local submissions.");
                   }}
                 >
@@ -688,13 +769,7 @@ function ApplicationRecord({ application }) {
                         disabled={busy}
                         onClick={() =>
                           act(
-                            () =>
-                              saveDecision(application.id, {
-                                result: decision,
-                                reason: decisionReason,
-                                nextSteps,
-                                publish: false,
-                              }),
+                            () => persistDecision(false),
                             "Decision draft saved. It has not been released to the applicant.",
                           )
                         }
@@ -717,6 +792,76 @@ function ApplicationRecord({ application }) {
                   outcomes.
                 </p>
               )}
+              {canDecide &&
+                (application.reviewRequest || application.referralConsent) && (
+                  <section
+                    className="sw-outcome-followup"
+                    aria-labelledby="staff-followup-heading"
+                  >
+                    <h3 id="staff-followup-heading">Applicant follow-up</h3>
+                    {application.referralConsent && (
+                      <div className="sw-recorded-note">
+                        <strong>
+                          Support contact consent:{" "}
+                          {application.referralConsent.consent
+                            ? "Given"
+                            : "Withdrawn"}
+                        </strong>
+                        {application.referralConsent.recordedAt && (
+                          <p>
+                            {displayDateTime(
+                              application.referralConsent.recordedAt,
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {application.reviewRequest && (
+                      <>
+                        <div className="sw-recorded-note">
+                          <strong>
+                            Review request ·{" "}
+                            {{ in_review: "In review", resolved: "Resolved" }[
+                              application.reviewRequest.status
+                            ] || "Awaiting review"}
+                          </strong>
+                          <p>{application.reviewRequest.grounds}</p>
+                          {application.reviewRequest.createdAt && (
+                            <small>
+                              Requested{" "}
+                              {displayDateTime(
+                                application.reviewRequest.createdAt,
+                              )}
+                            </small>
+                          )}
+                          {application.reviewRequest.response && (
+                            <>
+                              <p>
+                                <strong>Response</strong>
+                              </p>
+                              <p>{application.reviewRequest.response}</p>
+                              {application.reviewRequest.respondedAt && (
+                                <small>
+                                  Responded{" "}
+                                  {displayDateTime(
+                                    application.reviewRequest.respondedAt,
+                                  )}
+                                </small>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <ReviewRequestResponse
+                          key={application.reviewRequest.createdAt}
+                          applicationId={application.id}
+                          request={application.reviewRequest}
+                          busy={busy}
+                          act={act}
+                        />
+                      </>
+                    )}
+                  </section>
+                )}
             </section>
           )}
           {section === "documents" && (
@@ -898,5 +1043,67 @@ function ApplicationRecord({ application }) {
         />
       )}
     </div>
+  );
+}
+
+// Each incoming request starts a fresh response form. Later remote responses
+// never acknowledge or replace text that this staff member is still editing.
+function ReviewRequestResponse({ applicationId, request, busy, act }) {
+  const { respondToReviewRequest } = useStaffWorkflow();
+  const baseline = useRef(
+    request.updatedAt || request.respondedAt || request.createdAt || null,
+  );
+  const [status, setStatus] = useState(
+    request.status === "resolved" ? "resolved" : "in_review",
+  );
+  const [response, setResponse] = useState(request.response || "");
+  async function save() {
+    const saved = await respondToReviewRequest(applicationId, {
+      status,
+      response,
+      expectedUpdatedAt: baseline.current,
+    });
+    baseline.current =
+      saved.updatedAt || saved.respondedAt || saved.createdAt || null;
+  }
+  return (
+    <form
+      className="sw-action-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        act(
+          save,
+          "Review-request response saved. It is visible to the applicant in this browser.",
+        );
+      }}
+    >
+      <label className="st-field">
+        Follow-up status
+        <select
+          aria-label="Follow-up status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="in_review">In review</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </label>
+      <label className="st-field">
+        Response to review request
+        <textarea
+          aria-label="Response to review request"
+          value={response}
+          onChange={(event) => setResponse(event.target.value)}
+          maxLength={3000}
+          rows={4}
+        />
+      </label>
+      <div className="st-actions">
+        <button className="st-button st-button-primary" disabled={busy}>
+          Save review-request response
+          <ArrowRight size={16} />
+        </button>
+      </div>
+    </form>
   );
 }
