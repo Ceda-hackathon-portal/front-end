@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { usePortal } from "./PortalContext";
 import { useAdmin } from "./AdminContext";
@@ -9,6 +9,11 @@ import {
   prepareDocument,
   saveDocumentFiles,
 } from "../services/applicantDocuments";
+import {
+  createBrowserStore,
+  assertRecordUnchanged,
+  withBrowserStoreLock,
+} from "../services/browserPersistence";
 import {
   assertStaffRole,
   decideRecord,
@@ -27,47 +32,24 @@ import {
 
 const StaffWorkflowContext = createContext(null);
 const STORAGE_KEY = "ceda.staff.workflow.v1";
-
-function readSavedRecords() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return { records: {}, warning: "" };
-    const data = JSON.parse(saved);
-    if (
-      !data ||
-      typeof data.records !== "object" ||
-      Array.isArray(data.records) ||
-      !Object.values(data.records).every(
-        (record) =>
-          record &&
-          Array.isArray(record.reviews) &&
-          Array.isArray(record.documents) &&
-          Array.isArray(record.history) &&
-          Number.isInteger(record.applicationVersion),
-      )
-    )
-      throw new Error("Invalid workflow data");
-    return { records: data.records, warning: "" };
-  } catch {
-    return {
-      records: {},
-      warning:
-        "Saved staff records could not be read. The existing copy has been kept. Restore browser storage before saving.",
-    };
-  }
+function validStaffState(value) {
+  return Boolean(
+    value &&
+    value.records &&
+    typeof value.records === "object" &&
+    !Array.isArray(value.records) &&
+    Object.values(value.records).every(
+      (record) =>
+        record &&
+        Array.isArray(record.reviews) &&
+        Array.isArray(record.documents) &&
+        Array.isArray(record.history) &&
+        Number.isInteger(record.applicationVersion),
+    ),
+  );
 }
-
-export function StaffWorkflowProvider({ children }) {
-  const { staffUser } = useAuth();
-  const portal = usePortal();
-  const admin = useAdmin();
-  const [initial] = useState(readSavedRecords);
-  const [, setSavedRecords] = useState(initial.records);
-  const savedRef = useRef(initial.records);
-  const uploading = useRef(false);
-  const [storageWarning, setStorageWarning] = useState(initial.warning);
-
-  const allApplications = [
+function applicationsFrom(portal, admin) {
+  return [
     ...portal.ideas.map((idea) => {
       const latest = idea.versions?.at(-1) || idea;
       return {
@@ -75,7 +57,7 @@ export function StaffWorkflowProvider({ children }) {
         ...latest,
         id: idea.id,
         reference: applicationReference(idea),
-        programmeId: idea.programmeId || "p_ich_2026",
+        programmeId: idea.programmeId || latest.programmeId || "p_ich_2026",
         documents: latest.documents || idea.documents || [],
         applicant: latest.applicant || idea.applicant || null,
         sample: idea.id.startsWith("CEDA-DEMO-"),
@@ -98,69 +80,158 @@ export function StaffWorkflowProvider({ children }) {
         )?.criteria || [],
     }))
     .sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+}
+function updatedAfter(previous) {
+  return new Date(
+    Math.max(Date.now(), (Date.parse(previous) || 0) + 1),
+  ).toISOString();
+}
 
-  function applicationById(id) {
-    const application = allApplications.find((item) => item.id === id);
-    if (!application)
-      throw new Error(
-        "Application not found. Reopen it from the applications list.",
-      );
-    return application;
+export function StaffWorkflowProvider({ children }) {
+  const { staffUser } = useAuth();
+  const staffRef = useRef(staffUser);
+  staffRef.current = staffUser;
+  const portal = usePortal();
+  const admin = useAdmin();
+  const [store] = useState(() =>
+    createBrowserStore({
+      key: STORAGE_KEY,
+      initialValue: { records: {} },
+      validate: validStaffState,
+    }),
+  );
+  const [saved, setSaved] = useState(store.getSnapshot);
+  const [storageWarning, setStorageWarning] = useState(store.getWarning);
+  const uploading = useRef(false);
+  useEffect(
+    () =>
+      store.subscribe((next, warning) => {
+        setSaved(next);
+        setStorageWarning(warning);
+      }),
+    [store],
+  );
+  const allApplications = applicationsFrom(portal, admin);
+
+  function rawRecord(application, sources = { portal, staff: saved }) {
+    return recordForVersion(
+      sources.portal.staffRecords?.[application.id] ||
+        sources.staff.records[application.id],
+      application,
+    );
   }
-  function programmeFor(application) {
-    const programme = admin.programmes.find(
+  function programmeFor(application, state = admin) {
+    const programme = state.programmes.find(
       (item) => item.id === application.programmeId,
     );
     if (!programme)
       throw new Error("The application programme is unavailable.");
     return programme;
   }
-  function rawRecord(application) {
-    return recordForVersion(
-      portal.staffRecords?.[application.id] || savedRef.current[application.id],
-      application,
-    );
-  }
-  function isAssigned(application) {
+  function isAssigned(
+    application,
+    record = rawRecord(application),
+    state = admin,
+  ) {
     return mayReadAssignedApplication(
       staffUser,
       application,
-      rawRecord(application),
-      admin.assignments[application.id] || [],
+      record,
+      state.assignments[application.id] || [],
     );
   }
-  function ensureRead(application) {
+  function ensureRead(application, record, state = admin) {
     assertStaffRole(staffUser, staffRoles);
-    if (staffUser.role === "evaluator" && !isAssigned(application))
+    if (
+      staffUser.role === "evaluator" &&
+      !isAssigned(application, record, state)
+    )
       throw new Error("This application is not assigned to you.");
   }
-  function saveRecord(application, record) {
-    const latest = rawRecord(application);
-    if ((latest.revision || 0) !== (record.revision || 0))
-      throw new Error("This staff record changed. Reopen it before saving.");
-    record = { ...record, revision: (record.revision || 0) + 1 };
-    if (portal.ideas.some((idea) => idea.id === application.id)) {
-      portal.commitStaffWorkflow(application.id, record);
-      return;
+  function findApplication(id, applications = allApplications) {
+    const application = applications.find((item) => item.id === id);
+    if (!application)
+      throw new Error(
+        "Application not found. Reopen it from the applications list.",
+      );
+    return application;
+  }
+  function freshSources() {
+    return {
+      portal: portal.readCurrentState(),
+      admin: admin.readCurrentState(),
+      staff: store.read(),
+    };
+  }
+  function currentCase(id, displayed, sources) {
+    const application = findApplication(
+      id,
+      applicationsFrom(sources.portal, sources.admin),
+    );
+    assertRecordUnchanged(
+      displayed.version,
+      application.version,
+      "This application version",
+    );
+    return application;
+  }
+  function assertCurrentActor() {
+    if (
+      staffRef.current?.id !== staffUser?.id ||
+      staffRef.current?.role !== staffUser?.role
+    )
+      throw new Error(
+        "Your staff session changed. Reopen the record before continuing.",
+      );
+  }
+  // The mutation is built inside the shared metadata transaction, so assignment,
+  // programme and applicant changes queued before it are included in its checks.
+  async function mutateCase(id, displayed, change) {
+    let savedRecord;
+    let savedApplication;
+    let savedSources;
+    function build(sources) {
+      assertCurrentActor();
+      const application = currentCase(id, displayed, sources);
+      const previous = rawRecord(application, sources);
+      const record = change(application, previous, sources);
+      savedRecord = { ...record, revision: (previous.revision || 0) + 1 };
+      savedApplication = application;
+      savedSources = sources;
+      return savedRecord;
     }
-    if (initial.warning) throw new Error(initial.warning);
-    const next = { ...savedRef.current, [application.id]: record };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ records: next }));
-    } catch {
-      const message =
-        "The staff action could not be saved. Free browser storage and retry.";
-      setStorageWarning(message);
-      throw new Error(message);
+    if (portal.readCurrentState().ideas.some((idea) => idea.id === id)) {
+      await portal.commitStaffWorkflow(id, (current) =>
+        build({
+          portal: current.portal,
+          admin: current.admin,
+          staff: store.read(),
+        }),
+      );
+    } else {
+      await store.update((current) => {
+        const sources = {
+          portal: portal.readCurrentState(),
+          admin: admin.readCurrentState(),
+          staff: current,
+        };
+        return {
+          ...current,
+          records: { ...current.records, [id]: build(sources) },
+        };
+      });
     }
-    savedRef.current = next;
-    setSavedRecords(next);
-    setStorageWarning("");
+    return visibleStaffRecord(
+      savedRecord,
+      staffUser,
+      programmeFor(savedApplication, savedSources.admin),
+      savedSources.admin.assignments[id] || [],
+    );
   }
   function getRecord(id) {
-    const application = applicationById(id);
-    ensureRead(application);
+    const application = findApplication(id);
     const record = rawRecord(application);
+    ensureRead(application, record);
     const programme = programmeFor(application);
     const assignments = admin.assignments[id] || [];
     const reviewMessage = reviewBlocker({
@@ -186,37 +257,70 @@ export function StaffWorkflowProvider({ children }) {
     };
   }
   function screenApplication(id, input) {
-    const application = applicationById(id);
-    const record = screenRecord({
-      staff: staffUser,
-      application,
-      record: rawRecord(application),
-      input,
-    });
-    saveRecord(application, record);
+    const displayed = findApplication(id);
+    return withBrowserStoreLock("staff-workflow", () =>
+      mutateCase(id, displayed, (application, previous) => {
+        if (Object.hasOwn(input, "expectedScreeningAt"))
+          assertRecordUnchanged(
+            input.expectedScreeningAt,
+            previous.screening?.at || null,
+            "This screening result",
+          );
+        return screenRecord({
+          staff: staffUser,
+          application,
+          record: previous,
+          input,
+          now: updatedAfter(previous.screening?.at),
+        });
+      }),
+    );
   }
   function saveReview(id, input) {
-    const application = applicationById(id);
-    const record = reviewRecord({
-      staff: staffUser,
-      application,
-      record: rawRecord(application),
-      programme: programmeFor(application),
-      assignments: admin.assignments[id] || [],
-      input,
-    });
-    saveRecord(application, record);
+    const displayed = findApplication(id);
+    return withBrowserStoreLock("staff-workflow", () =>
+      mutateCase(id, displayed, (application, previous, sources) => {
+        const own = previous.reviews.find(
+          (review) => review.reviewerId === staffUser?.id,
+        );
+        if (Object.hasOwn(input, "expectedReviewUpdatedAt"))
+          assertRecordUnchanged(
+            input.expectedReviewUpdatedAt,
+            own?.updatedAt || null,
+            "Your review draft",
+          );
+        return reviewRecord({
+          staff: staffUser,
+          application,
+          record: previous,
+          programme: programmeFor(application, sources.admin),
+          assignments: sources.admin.assignments[id] || [],
+          input,
+          now: updatedAfter(own?.updatedAt),
+        });
+      }),
+    );
   }
   function saveDecision(id, input) {
-    const application = applicationById(id);
-    const record = decideRecord({
-      staff: staffUser,
-      record: rawRecord(application),
-      programme: programmeFor(application),
-      assignments: admin.assignments[id] || [],
-      input,
-    });
-    saveRecord(application, record);
+    const displayed = findApplication(id);
+    return withBrowserStoreLock("staff-workflow", () =>
+      mutateCase(id, displayed, (application, previous, sources) => {
+        if (Object.hasOwn(input, "expectedDecisionAt"))
+          assertRecordUnchanged(
+            input.expectedDecisionAt,
+            previous.decision?.at || null,
+            "This decision draft",
+          );
+        return decideRecord({
+          staff: staffUser,
+          record: previous,
+          programme: programmeFor(application, sources.admin),
+          assignments: sources.admin.assignments[id] || [],
+          input,
+          now: updatedAfter(previous.decision?.at),
+        });
+      }),
+    );
   }
   async function uploadStaffDocuments(id, files) {
     assertStaffRole(staffUser, [
@@ -225,8 +329,7 @@ export function StaffWorkflowProvider({ children }) {
       "adjudicator",
       "administrator",
     ]);
-    const application = applicationById(id);
-    ensureRead(application);
+    const displayed = findApplication(id);
     const selected = Array.from(files || []);
     if (!selected.length) throw new Error("Choose at least one document.");
     if (uploading.current)
@@ -238,42 +341,79 @@ export function StaffWorkflowProvider({ children }) {
       const prepared = [];
       for (const file of selected)
         prepared.push(await prepareDocument(file, "staff-supporting"));
-      const before = rawRecord(application);
-      const plan = documentUploadPlan(prepared, before.documents);
-      if (before.documents.length + plan.documents.length > 10)
-        throw new Error("Attach up to 10 internal documents per application.");
-      await saveDocumentFiles(plan.files);
-      const current = rawRecord(application);
-      saveRecord(application, {
-        ...current,
-        documents: [...current.documents, ...plan.documents],
-        history: [
-          {
-            id: crypto.randomUUID(),
-            at: new Date().toISOString(),
-            actor: staffUser.name,
-            role: staffUser.role,
-            action: `Attached ${plan.ids.length} internal document(s)`,
-          },
-          ...current.history,
-        ],
+      return await withBrowserStoreLock("staff-workflow", async () => {
+        assertCurrentActor();
+        let sources = freshSources();
+        let application = currentCase(id, displayed, sources);
+        let previous = rawRecord(application, sources);
+        ensureRead(application, previous, sources.admin);
+        const plan = documentUploadPlan(prepared, previous.documents);
+        if (previous.documents.length + plan.documents.length > 10)
+          throw new Error(
+            "Attach up to 10 internal documents per application.",
+          );
+        await saveDocumentFiles(plan.files);
+        assertCurrentActor();
+        await mutateCase(id, displayed, (application, previous, sources) => {
+          ensureRead(application, previous, sources.admin);
+          const added = plan.documents.filter(
+            (item) =>
+              !previous.documents.some((existing) => existing.id === item.id),
+          );
+          if (previous.documents.length + added.length > 10)
+            throw new Error(
+              "Attach up to 10 internal documents per application.",
+            );
+          return {
+            ...previous,
+            documents: [...previous.documents, ...added],
+            history: [
+              {
+                id: crypto.randomUUID(),
+                at: new Date().toISOString(),
+                actor: staffUser.name,
+                role: staffUser.role,
+                action: `Attached ${plan.ids.length} internal document(s)`,
+              },
+              ...previous.history,
+            ],
+          };
+        });
+        return plan.ids;
       });
-      return plan.ids;
     } finally {
       uploading.current = false;
     }
   }
   function closeScoring(programmeId) {
-    assertStaffRole(staffUser, ["administrator"]);
-    const programme = admin.programmes.find((item) => item.id === programmeId);
-    const blocker = scoringClosureBlocker(
-      programme,
-      allApplications,
-      rawRecord,
-      admin.assignments,
-    );
-    if (blocker) throw new Error(blocker);
-    admin.closeScoring(programmeId);
+    return withBrowserStoreLock("staff-workflow", () => {
+      assertCurrentActor();
+      assertStaffRole(staffUser, ["administrator"]);
+      return admin.closeScoring(programmeId, {
+        assertCanClose(programme, currentAdmin) {
+          assertCurrentActor();
+          const sources = {
+            portal: portal.readCurrentState(),
+            admin: currentAdmin,
+            staff: store.read(),
+          };
+          const blocker = scoringClosureBlocker(
+            programme,
+            applicationsFrom(sources.portal, sources.admin),
+            (application) => rawRecord(application, sources),
+            sources.admin.assignments,
+          );
+          if (blocker) throw new Error(blocker);
+        },
+      });
+    });
+  }
+  function respondToReviewRequest(id, input) {
+    return withBrowserStoreLock("staff-workflow", () => {
+      assertCurrentActor();
+      assertStaffRole(staffUser, ["administrator", "adjudicator"]);
+      return portal.respondToReviewRequest(id, input);
+    });
   }
 
   const workflowAssignments = derivedAssignmentProgress(
@@ -285,7 +425,6 @@ export function StaffWorkflowProvider({ children }) {
       ]),
     ),
   );
-
   const applications =
     staffUser && staffRoles.includes(staffUser.role)
       ? allApplications
@@ -322,7 +461,6 @@ export function StaffWorkflowProvider({ children }) {
       getRecord(application.id),
     ]),
   );
-
   return (
     <StaffWorkflowContext.Provider
       value={{
@@ -336,6 +474,7 @@ export function StaffWorkflowProvider({ children }) {
         saveDecision,
         uploadStaffDocuments,
         closeScoring,
+        respondToReviewRequest,
         storageWarning:
           storageWarning || portal.storageWarning || admin.storageWarning,
       }}
