@@ -4,7 +4,7 @@ import { usePortal } from "../../context/PortalContext";
 import { documentCategories, isExpired } from "../../utils/applicantWorkflow";
 import { downloadDocument, fileSize } from "../../services/applicantDocuments";
 
-export function DocumentList({ documents, onRemove }) {
+export function DocumentList({ documents, onRemove, disabled = false }) {
   const [error, setError] = useState("");
   return (
     <>
@@ -51,6 +51,7 @@ export function DocumentList({ documents, onRemove }) {
                 type="button"
                 className="ap-icon-control"
                 aria-label={"Remove " + document.name + " from application"}
+                disabled={disabled}
                 onClick={() => onRemove(document.id)}
               >
                 <X size={17} />
@@ -70,6 +71,7 @@ export function DocumentList({ documents, onRemove }) {
 export default function ApplicantDocuments({
   draftId = null,
   onChanged,
+  onPendingChange,
   error: validationError = "",
 }) {
   const { documents, drafts, uploadDocuments, attachDocument } = usePortal();
@@ -89,6 +91,7 @@ export default function ApplicantDocuments({
   async function saveFiles(files) {
     if (!files.length || busy) return;
     setBusy(true);
+    onPendingChange?.(true);
     setError("");
     setNotice("");
     try {
@@ -101,12 +104,18 @@ export default function ApplicantDocuments({
       setError(failure.message);
     } finally {
       setBusy(false);
+      onPendingChange?.(false);
       if (input.current) input.current.value = "";
     }
   }
-  function attach(id, remove = false) {
+  async function attach(id, remove = false) {
+    if (busy) return;
+    setBusy(true);
+    onPendingChange?.(true);
+    setError("");
+    setNotice("");
     try {
-      attachDocument(draftId, id, remove);
+      await attachDocument(draftId, id, remove);
       setError("");
       setNotice(
         remove
@@ -116,6 +125,9 @@ export default function ApplicantDocuments({
       onChanged?.();
     } catch (failure) {
       setError(failure.message);
+    } finally {
+      setBusy(false);
+      onPendingChange?.(false);
     }
   }
   return (
@@ -201,6 +213,7 @@ export default function ApplicantDocuments({
       )}
       <DocumentList
         documents={selected}
+        disabled={busy}
         onRemove={draftId ? (id) => attach(id, true) : null}
       />
       {!selected.length && (
@@ -221,7 +234,7 @@ export default function ApplicantDocuments({
               </span>
               <button
                 type="button"
-                disabled={isExpired(document)}
+                disabled={busy || isExpired(document)}
                 className="ap-text-link"
                 onClick={() => attach(document.id)}
               >
