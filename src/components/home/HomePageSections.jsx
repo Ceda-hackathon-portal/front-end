@@ -1,74 +1,52 @@
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, FileText, Search, LayoutDashboard, ClipboardCheck, BookOpen, Users } from "lucide-react";
-import { useAuth } from "../../hooks/useAuth";
-import { roleHome } from "../../utils/portal";
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowRight, Pause, Play } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
+import { roleHome } from '../../utils/portal'
+import OptimizedImage from '../shared/OptimizedImage'
 
-const quickActions = [
-  { label: "Submit an idea", to: "/workspace/new", secure: true },
-  { label: "My submissions", to: "/workspace", secure: true },
-  { label: "Track your idea", to: "/workspace", secure: true },
-];
-const services = [
-  { title: "Submit an idea", description: "Start a submission.", to: "/workspace/new", icon: FileText, secure: true },
-  { title: "My submissions", description: "Drafts and progress.", to: "/workspace", icon: Search, secure: true },
-  { title: "Programmes", description: "Explore innovation themes.", to: "/challenges", icon: Users },
-  { title: "Help", description: "Questions and support.", to: "/help", icon: ClipboardCheck },
-  { title: "Services", description: "Everything in the portal.", to: "/services", icon: LayoutDashboard },
-  { title: "Guidelines", description: "Before you submit.", to: "/how-it-works", icon: BookOpen },
-];
-const serviceColumns = [services.slice(0, 3), services.slice(3, 6)];
+function BrandStrip() {
+  const [paused, setPaused] = useState(false)
+  return <section className={'home-brand-strip' + (paused ? ' is-paused' : '')} aria-label="CEDA: Finance, Develop, Sustain">
+    <div className="home-brand-viewport"><div className="home-brand-track">
+      {[false, true].map(duplicate => <div className="home-brand-group" key={String(duplicate)} aria-hidden={duplicate || undefined}>
+        <img src="/images/ceda-logo.png" alt="CEDA" width="112" height="69" />
+        <span>Finance.</span><span>Develop.</span><span>Sustain.</span>
+      </div>)}
+    </div></div>
+    <button type="button" className="home-brand-toggle" aria-label={paused ? 'Resume brand animation' : 'Pause brand animation'} aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? <Play size={14} /> : <Pause size={14} />}</button>
+  </section>
+}
+
 export default function HomePageSections() {
-  const { user, requireAuth } = useAuth();
-  const navigate = useNavigate();
-  function follow(event, target, secure) {
-    if (!secure) return;
-    event.preventDefault();
-    const destination = user && user.role !== "submitter" && target.startsWith("/workspace") ? roleHome(user.role) : target;
-    if (requireAuth(destination)) navigate(destination);
+  const { user, requireAuth } = useAuth()
+  const navigate = useNavigate()
+  function follow(event, target) {
+    event.preventDefault()
+    const destination = user && user.role !== 'submitter' ? roleHome(user.role) : target
+    if (requireAuth(destination)) navigate(destination)
   }
-  return (
-    <>
-      <div style={{ background: "#ffffff" }}>
-        <section className="home-sections-block">
-          <div className="home-sections-shell">
-            <div className="home-section-label">QUICK ACTIONS</div>
-            {quickActions.map(({ label, to, secure }) => (
-              <Link key={label} to={to} className="home-quick-link" onClick={(event) => follow(event, to, secure)}>
-                <span className="home-quick-text">{label}</span><ArrowRight className="home-quick-arrow" size={22} />
-              </Link>
-            ))}
-          </div>
-        </section>
-        <section className="home-stats-section" role="img" aria-label="CEDA innovation: human and digital hands meeting at a glowing brain" />
-        <section className="home-sections-block home-services-section">
-          <div className="home-sections-shell">
-            <div className="home-section-label">SERVICES</div>
-            <h2 className="home-section-heading">Your CEDA portal.</h2>
-            <div className="home-services-columns">
-              {serviceColumns.map((column, index) => (
-                <div key={index} className="home-services-column">
-                  {column.map(({ title, description, to, icon: Icon, secure }) => (
-                    <Link key={title} to={to} className="home-service-row" onClick={(event) => follow(event, to, secure)}>
-                      <div className="home-service-icon-box"><Icon size={20} /></div>
-                      <div className="home-service-copy"><div className="home-service-title">{title}</div><div className="home-service-description">{description}</div></div>
-                      <ArrowRight className="home-service-arrow" size={16} />
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-        <section className="home-sections-block home-steps-section">
-          <div className="home-sections-shell">
-            <div className="home-section-label">GET STARTED</div>
-            <div className="home-steps-row">
-              {[["01", "Sign in"], ["02", "Submit"], ["03", "Track"]].map(([number, title]) => <div key={number} className="home-step-item"><span className="home-step-number">{number}</span><div className="home-step-title">{title}</div></div>)}
-            </div>
-          </div>
-        </section>
+  return <div className="home-content">
+    <BrandStrip />
+    <section className="home-application" aria-labelledby="home-application-title">
+      <div className="home-application-photo">
+        <OptimizedImage name="Drone.jpg" sizes="(max-width: 760px) 100vw, 55vw" alt="A drone resting in a sunlit field" />
       </div>
-
-    </>
-  );
+      <div className="home-application-copy">
+        <span className="home-kicker">Applicant portal</span>
+        <h2 id="home-application-title">Your application,<br />in one place.</h2>
+        <p>Submit an idea, save your progress and follow your application.</p>
+        <Link className="home-primary-action" to="/workspace/new" onClick={event => follow(event, '/workspace/new')}>Start an application<ArrowRight size={18} /></Link>
+        <div className="home-secondary-actions">
+          <Link to="/workspace/applications" onClick={event => follow(event, '/workspace/applications')}>My applications<ArrowRight size={16} /></Link>
+          <Link to="/portal/help">Application guide<ArrowRight size={16} /></Link>
+        </div>
+      </div>
+    </section>
+    <nav className="home-resources" aria-label="Portal resources">
+      <Link to="/challenges"><span>01</span>Programmes<ArrowRight size={18} /></Link>
+      <Link to="/how-it-works"><span>02</span>Guidelines<ArrowRight size={18} /></Link>
+      <Link to="/help"><span>03</span>Help & support<ArrowRight size={18} /></Link>
+    </nav>
+  </div>
 }
