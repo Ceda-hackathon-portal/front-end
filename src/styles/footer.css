@@ -1,0 +1,36 @@
+.cf-footer { margin-top: auto; background: #0c0b0a; color: #f2eee7; font-family: 'Poppins', sans-serif; padding: 70px 0 0; overflow: hidden; }
+.cf-shell { max-width: 1360px; margin: auto; padding: 0 40px; }
+.cf-feedback { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; padding-bottom: 65px; border-bottom: 1px solid #38312a; }
+.cf-eyebrow { display: block; color: #ad9d8b; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; margin-bottom: 24px; }
+.cf-feedback-intro h2 { font: 400 clamp(32px, 3.7vw, 54px)/1.13 'Poppins', sans-serif; letter-spacing: -.045em; color: #f2eee7; margin-bottom: 24px; }
+.cf-feedback-intro a { display: inline-flex; align-items: center; gap: 18px; color: #c3b19b; font-size: 13px; border-bottom: 1px solid #625344; padding-bottom: 9px; }
+.cf-feedback-form { align-self: center; }
+.cf-feedback-form label { display: block; color: #e8e0d6; font-size: 13px; margin-bottom: 13px; }
+.cf-feedback-form textarea { width: 100%; min-height: 118px; background: #181512; color: #f2eee7; border: 1px solid #44392f; border-radius: 5px; padding: 16px; font: 13px/1.7 'Poppins', sans-serif; resize: vertical; }
+.cf-feedback-form textarea::placeholder { color: #a49a90; }
+.cf-feedback-form textarea:focus-visible { outline-color: #c3b19b; }
+.cf-feedback-actions { display: flex; align-items: flex-start; gap: 20px; justify-content: space-between; margin-top: 16px; }
+.cf-feedback-actions p { max-width: 220px; color: #a99f94; font-size: 11px; line-height: 1.7; }
+.cf-feedback-actions button { display: inline-flex; align-items: center; gap: 14px; color: #1d1712; background: #d6c4ad; padding: 12px 15px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+.cf-feedback-actions button:hover { background: #e8ddcf; }
+.cf-feedback-status { margin-top: 14px; color: #d9c7af; font-size: 12px; line-height: 1.7; }
+.cf-columns { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 50px; padding: 50px 0; }
+.cf-logo { display: block; width: fit-content; margin-bottom: 18px; }
+.cf-logo img { width: 110px; height: auto; filter: grayscale(1) brightness(0) invert(1); opacity: .85; }
+.cf-heading { color: #eee7dc; font: 400 14px/1.4 'Poppins', sans-serif; margin-bottom: 23px; }
+.cf-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 13px; }
+.cf-link, .cf-text { color: #afa79d; font-size: 12px; line-height: 1.6; text-decoration: none; }
+.cf-link:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+.cf-bottom { display: flex; flex-wrap: wrap; gap: 25px; border-top: 1px solid #38312a; padding: 22px 0; }
+.cf-bottom .cf-link { font-size: 11px; }
+.cf-signature { font-size: clamp(36px, 12.4vw, 176px); line-height: .88; letter-spacing: -.065em; font-weight: 500; white-space: nowrap; text-align: center; margin: 20px -12px 0; padding-bottom: 4px; background: linear-gradient(180deg, #9d846766, #9d846714); background-clip: text; -webkit-background-clip: text; color: transparent; user-select: none; }
+@media (max-width: 760px) {
+  .cf-footer { padding-top: 42px; }
+  .cf-shell { padding-inline: 24px; }
+  .cf-feedback { grid-template-columns: 1fr; gap: 32px; padding-bottom: 35px; }
+  .cf-feedback-intro h2 { font-size: 35px; }
+  .cf-feedback-actions { flex-direction: column; gap: 16px; }
+  .cf-columns { grid-template-columns: 1fr 1fr; gap: 35px 20px; padding-block: 35px; }
+  .cf-columns > div:first-child { grid-column: 1 / -1; }
+  .cf-signature { font-size: 11.6vw; margin: 14px -8px 0; }
+}
