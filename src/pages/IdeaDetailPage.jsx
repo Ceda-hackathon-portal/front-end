@@ -154,7 +154,7 @@ export default function IdeaDetailPage() {
                 : "A response date has not been provided."}
             </small>
           </div>
-          {canUpdate(idea) ? (
+          {!idea.backendOwnerId && canUpdate(idea) ? (
             <button
               className="ap-button ap-button-primary"
               type="button"
@@ -437,7 +437,7 @@ export default function IdeaDetailPage() {
                 ? "Read the outcome and available next steps."
                 : "Check Messages for requests and updates."}
           </p>
-          {canUpdate(idea) && idea.revisionRequest?.status !== "open" && (
+          {!idea.backendOwnerId && canUpdate(idea) && idea.revisionRequest?.status !== "open" && (
             <button
               type="button"
               className="ap-button ap-button-secondary ap-no-print"

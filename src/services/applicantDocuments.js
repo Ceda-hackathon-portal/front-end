@@ -175,6 +175,13 @@ export async function prepareDocument(file, category, expiresAt = "") {
   };
   return { metadata, blob };
 }
+export async function copyDocumentToApplication(document, draftId, upload, read = applicationsApi.downloadDocument) {
+  const bytes = document.storage === "server"
+    ? await read(document.applicationId, document.backendDocumentId || document.id)
+    : await getDocumentFile(document.id);
+  const file = new File([bytes], document.name, { type: document.type || document.contentType });
+  return upload([file], document.category, document.expiresAt?.slice(0, 10) || "", draftId);
+}
 export async function downloadDocument(document) {
   const blob = document.storage === "server"
     ? await applicationsApi.downloadDocument(document.applicationId, document.backendDocumentId || document.id)

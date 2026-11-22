@@ -13,6 +13,7 @@ export function createBrowserStore({
   let warning = "";
   let lastRaw;
   let observedSavedValue = false;
+  let memoryOnly = false;
   const listeners = new Set();
   const unreadable =
     "Saved workspace data could not be read. The existing copy has been kept. Restore browser storage before saving.";
@@ -34,7 +35,9 @@ export function createBrowserStore({
     } catch {
       return fail(unreadable);
     }
+    if (memoryOnly && raw === lastRaw) return snapshot;
     if (raw === null) {
+      if (memoryOnly) return snapshot;
       if (observedSavedValue) return fail(removed);
       lastRaw = null;
       return snapshot;
@@ -50,6 +53,7 @@ export function createBrowserStore({
     snapshot = next;
     lastRaw = raw;
     observedSavedValue = true;
+    memoryOnly = false;
     warning = "";
     publish();
     return snapshot;
@@ -138,6 +142,7 @@ export function createBrowserStore({
         snapshot = next;
         lastRaw = serialized;
         observedSavedValue = true;
+        memoryOnly = false;
         warning = "";
         onCommitted?.(next);
         publish();
@@ -146,10 +151,22 @@ export function createBrowserStore({
       locks,
     );
   }
+  function updateMemory(change, message) {
+    const next = change(snapshot);
+    if (next && typeof next.then === "function")
+      throw new Error("A workspace mutation must finish synchronously.");
+    if (!validate(next)) throw new Error("The server data could not be shown in this workspace.");
+    snapshot = next;
+    warning = message || "The server confirmed this save; this view is held in memory.";
+    memoryOnly = true;
+    publish();
+    return snapshot;
+  }
   refresh();
   return {
     read,
     update,
+    updateMemory,
     subscribe,
     getSnapshot: () => snapshot,
     getWarning: () => warning,

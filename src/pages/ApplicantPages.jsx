@@ -22,7 +22,7 @@ import { themes } from "../data/portal";
 import ApplicationList from "../components/applicant/ApplicationList";
 
 export function ApplicantApplicationsPage() {
-  const { ideas, drafts, profile, documents } = usePortal();
+  const { ideas, drafts, profile, documents, applicationsLoading, applicationsError, refreshApplications } = usePortal();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") || "";
   const status = params.get("status") || "all";
@@ -76,6 +76,8 @@ export function ApplicantApplicationsPage() {
             </select>
           </label>
         </div>
+        {applicationsLoading && <p role="status">Loading applications from CEDA…</p>}
+        {applicationsError && <div className="ap-form-alert" role="alert"><p>Applications could not be retrieved from CEDA. Existing server records have not been changed.</p><p>{applicationsError}</p><button type="button" className="ap-button ap-button-secondary" onClick={() => void refreshApplications()}>Retry</button></div>}
         {filteredDrafts.map((draft) => {
           const progress = workflowProgress(draft, profile, documents);
           return (

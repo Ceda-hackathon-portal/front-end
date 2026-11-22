@@ -10,6 +10,7 @@ import GuidelinesPage from "./pages/GuidelinesPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubmitIdeaPage from "./pages/SubmitIdeaPage";
+import ApplicationSubmittedPage from "./pages/ApplicationSubmittedPage";
 import ApplicantProfilePage from "./pages/ApplicantProfilePage";
 import ApplicantEligibilityPage from "./pages/ApplicantEligibilityPage";
 import IdeaDetailPage from "./pages/IdeaDetailPage";
@@ -81,6 +82,7 @@ export default function App() {
                 element={<ApplicantProfilePage />}
               />
               <Route path="/workspace/new" element={<SubmitIdeaPage />} />
+              <Route path="/workspace/ideas/:id/submitted" element={<ApplicationSubmittedPage />} />
               <Route path="/workspace/ideas/:id" element={<IdeaDetailPage />} />
               <Route path="/workspace/*" element={<ApplicantNotFoundPage />} />
             </Route>

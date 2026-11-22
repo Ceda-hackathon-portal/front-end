@@ -2,6 +2,18 @@ import { apiRequest } from "./apiClient.js";
 
 const dataOf = (response) => response?.data ?? response;
 const pendingSubmitKeys = new Map();
+const mutationTails = new Map();
+function serializeMutation(id, operation) {
+  const previous = mutationTails.get(id) || Promise.resolve();
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const tail = previous.catch(() => undefined).then(() => held);
+  mutationTails.set(id, tail);
+  return previous.catch(() => undefined).then(operation).finally(() => {
+    release();
+    if (mutationTails.get(id) === tail) mutationTails.delete(id);
+  });
+}
 const submitKeyName = (userId, applicationId, revision) =>
   `ceda.submit.v1.${userId}.${applicationId}.${revision}`;
 
@@ -26,6 +38,14 @@ function submissionKey(userId, applicationId, revision) {
 }
 
 export const applicationsApi = {
+  withMutation(applicationId, operation) {
+    return serializeMutation(applicationId, operation);
+  },
+
+  async list() {
+    return dataOf(await apiRequest("/applications"));
+  },
+
   async create({ programmeId, programmeVersionId }) {
     return dataOf(await apiRequest("/applications", {
       method: "POST",

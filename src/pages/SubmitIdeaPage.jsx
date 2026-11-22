@@ -16,6 +16,7 @@ import ProfileFields from "../components/applicant/ProfileFields";
 import ApplicantDocuments, {
   DocumentList,
 } from "../components/applicant/ApplicantDocuments";
+import { saveDraftWithFeedback } from "../utils/applicationSaveFeedback.js";
 
 const hints = {
   title: "A short, descriptive name.",
@@ -31,7 +32,7 @@ const money = (value) =>
   );
 
 export default function SubmitIdeaPage() {
-  const { drafts, createDraft } = usePortal();
+  const { drafts, createDraft, applicationsLoading, applicationsError, refreshApplications } = usePortal();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -58,12 +59,18 @@ export default function SubmitIdeaPage() {
   return (
     <div className="ap-page">
       <section className="ap-panel ap-draft-picker">
-        <h2>{requestedId ? "Draft not found" : "Your application"}</h2>
+        <h2>{requestedId && applicationsLoading ? "Loading your application" : requestedId && applicationsError ? "Application could not be restored" : requestedId ? "Draft not found" : "Your application"}</h2>
         <p>
-          {requestedId
+          {requestedId && applicationsLoading
+            ? "Retrieving the saved application from CEDA."
+            : requestedId && applicationsError
+              ? "Your saved application is still on CEDA. Retry loading it before continuing."
+              : requestedId
             ? "It may already have been submitted. Check My applications."
             : "Start a separate draft or continue saved work. Existing answers and files are kept."}
         </p>
+        {applicationsError && <p role="alert" className="ap-form-alert">{applicationsError}</p>}
+        {requestedId && applicationsError && <button className="ap-button ap-button-secondary" type="button" onClick={() => void refreshApplications()}>Retry loading</button>}
         {requestedTheme && (
           <p className="ap-inline-note">
             Selected theme:{" "}
@@ -126,6 +133,7 @@ function ApplicationForm({ draft }) {
     saveDraft,
     submitApplication,
     reloadWorkspace,
+    refreshApplications,
     storageWarning,
     documentsBusy,
   } = usePortal();
@@ -171,20 +179,16 @@ function ApplicationForm({ draft }) {
     setSaved(false);
     setSaving(true);
     const operation = pendingSave.current
-      .then(() => saveDraft(next, nextPerson))
-      .catch(() => false);
+      .then(() => saveDraftWithFeedback(next, () => saveDraft(next, nextPerson)));
     pendingSave.current = operation;
     operation.then((result) => {
       if (sequence !== saveSequence.current) return;
       savingRef.current = false;
-      setSaved(result);
+      setSaved(result.ok);
       setSaving(false);
-      if (!result)
-        setMessage(
-          "The draft could not be saved. Keep this page open and retry.",
-        );
+      if (!result.ok) setMessage(result.message || "The draft could not be saved. Your edits remain open.");
     });
-    return operation;
+    return operation.then((result) => result.ok);
   }
   function update(next, nextPerson = person) {
     setForm(next);
@@ -194,10 +198,12 @@ function ApplicationForm({ draft }) {
     setConfirmed(false);
     persistDraft(next, nextPerson);
   }
-  function reopenSavedDraft() {
+  async function reopenSavedDraft() {
     if (savingRef.current || documentsLocked || busy) return;
     ++saveSequence.current;
     try {
+      if (form.backendOwnerId && !(await refreshApplications()))
+        throw new Error("The latest application could not be retrieved from CEDA. Your current edits remain open.");
       const latest = reloadWorkspace();
       const current = latest.drafts.find((item) => item.id === form.id);
       if (!current)
@@ -294,7 +300,7 @@ function ApplicationForm({ draft }) {
     setMessage("");
     try {
       const id = await submitApplication(form, person, confirmed);
-      navigate("/workspace/ideas/" + id + "?submitted=1", { replace: true });
+      navigate("/workspace/ideas/" + id + "/submitted", { replace: true });
     } catch (failure) {
       setMessage(failure.message);
       submissionLock.current = false;
@@ -632,7 +638,7 @@ function ApplicationForm({ draft }) {
             (saving
               ? "Saving changes…"
               : saved
-                ? "Saved on this device"
+                ? draft.backendOwnerId ? "Saved to CEDA" : "Saved on this device"
                 : "Changes not saved")}
         </span>
       </div>
