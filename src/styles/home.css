@@ -1,263 +1,38 @@
-.home-sections-block {
-          padding: 80px 0;
-        }
-
-        .home-sections-shell {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 0 24px;
-        }
-
-        .home-quick-link {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 26px 0;
-          color: #0f172a;
-          text-decoration: none;
-          border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-          transition: color 0.2s ease;
-        }
-
-        .home-quick-link:first-child {
-          border-top: 1px solid rgba(148, 163, 184, 0.35);
-        }
-
-        .home-quick-link:hover {
-          color: #1A3A6B;
-        }
-
-        .home-quick-text {
-          font-size: clamp(1.8rem, 3.2vw, 2.7rem);
-          font-weight: 700;
-          line-height: 1.05;
-          letter-spacing: -0.04em;
-        }
-
-        .home-quick-arrow {
-          flex-shrink: 0;
-          transition: transform 0.2s ease;
-        }
-
-        .home-quick-link:hover .home-quick-arrow {
-          transform: translateX(6px);
-        }
-
-        .home-stats-section {
-          width: 100%;
-          background: url(/images/Drone.jpg);
-          padding: 0;
-          min-height: 480px;
-          height: 62vh;
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-        }
-
-        .home-services-section {
-          background: #ffffff;
-        }
-
-        .home-section-heading {
-          margin: 0 0 48px;
-          color: #111111;
-          font-family: "Poppins", sans-serif;
-          font-size: clamp(32px, 4vw, 52px);
-          font-weight: 800;
-          line-height: 1.02;
-          letter-spacing: -0.025em;
-        }
-
-        .home-services-columns {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 40px;
-        }
-
-        .home-services-column {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .home-service-row {
-          display: flex;
-          align-items: flex-start;
-          gap: 20px;
-          padding: 24px 0;
-          border-bottom: 1px solid #e5e7eb;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          text-decoration: none;
-          color: inherit;
-        }
-
-        .home-service-icon-box {
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          border-radius: 10px;
-          background: #f8f9fa;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #1A3A6B;
-          transition: background 0.2s ease;
-        }
-
-        .home-service-copy {
-          min-width: 0;
-        }
-
-        .home-service-title {
-          color: #111111;
-          font-family: "Poppins", sans-serif;
-          font-size: 17px;
-          font-weight: 700;
-          transition: color 0.2s ease;
-        }
-
-        .home-service-description {
-          margin-top: 4px;
-          color: #6b7280;
-          font-family: "Poppins", sans-serif;
-          font-size: 14px;
-          font-weight: 400;
-          line-height: 1.6;
-        }
-
-        .home-service-arrow {
-          margin-left: auto;
-          flex-shrink: 0;
-          color: #9ca3af;
-          transition: transform 0.2s ease, color 0.2s ease;
-        }
-
-        .home-service-row:hover .home-service-title {
-          color: #1A3A6B;
-        }
-
-        .home-service-row:hover .home-service-icon-box {
-          background: #D6E4F7;
-        }
-
-        .home-service-row:hover .home-service-arrow {
-          transform: translateX(4px);
-          color: #1A3A6B;
-        }
-
-        .home-steps-section {
-          background: url(/images/Drone.jpg);
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-        }
-
-        .home-steps-row {
-          display: flex;
-          gap: 0;
-        }
-
-        .home-step-item {
-          flex: 1;
-          padding: 0 40px;
-          border-right: 1px solid #e5e7eb;
-          text-decoration: none;
-          color: inherit;
-        }
-
-        .home-step-item:last-child {
-          border-right: none;
-        }
-
-        .home-step-link {
-          transition: transform 0.2s ease;
-        }
-
-        .home-step-link:hover {
-          transform: translateY(-2px);
-        }
-
-        .home-step-link:hover .home-step-title {
-          color: #1A3A6B;
-        }
-
-        .home-step-number {
-          display: block;
-          margin-bottom: -16px;
-          font-family: "Poppins", sans-serif;
-          font-size: 80px;
-          font-weight: 800;
-          line-height: 1;
-          color: #f0f0f0;
-        }
-
-        .home-step-title {
-          margin-bottom: 10px;
-          color: #ffffff;
-          font-family: "Poppins", sans-serif;
-          font-size: 20px;
-          font-weight: 700;
-          transition: color 0.2s ease;
-          text-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
-        }
-
-        @media (max-width: 960px) {
-
-          .home-steps-row {
-            flex-direction: column;
-          }
-
-          .home-step-item {
-            padding: 0 0 28px;
-            border-right: none;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .home-step-item:last-child {
-            padding-bottom: 0;
-            border-bottom: none;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .home-sections-shell {
-            padding: 0 20px;
-          }
-
-          .home-stats-section {
-            padding: 64px 20px;
-          }
-
-          .home-quick-link {
-            padding: 22px 0;
-          }
-
-          .home-quick-text {
-            font-size: 1.75rem;
-          }
-
-          .home-service-row {
-            gap: 16px;
-          }
-
-          .home-step-number {
-            font-size: 64px;
-          }
-        }
-
-        /* Homepage typography: Poppins everywhere on the home page */
-        .ceda-hero-frame,
-        .home-sections-block,
-        .home-sections-shell {
-          font-family: "Poppins", sans-serif;
-        }
-
-        .ceda-hero-frame :is(h1, h2, h3, p, span, a, button),
-        .home-sections-block :is(h1, h2, h3, h4, h5, h6, p, span, a, button, strong, small) {
-          font-family: "Poppins", sans-serif;
-        }
-
-        .home-quick-text {
-          font-family: "Poppins", sans-serif;
-        }
+.home-content { background: #fff; color: #27231f; font-family: 'Poppins', sans-serif; }
+.home-brand-strip { position: relative; background: #f7f7f5; border-block: 1px solid #e9e7e3; padding-block: 22px; }
+.home-brand-viewport { overflow: hidden; mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent); }
+.home-brand-track { display: flex; width: max-content; animation: home-brand-travel 38s linear infinite; }
+.home-brand-group { display: flex; align-items: center; justify-content: space-around; gap: 70px; min-width: max(900px, 100vw); padding-inline: 70px; }
+.home-brand-group img { width: 100px; height: 62px; object-fit: contain; filter: grayscale(1); opacity: .5; }
+.home-brand-group span { font-size: 25px; font-weight: 500; letter-spacing: -.045em; color: #92908a; }
+.home-brand-toggle { position: absolute; right: 14px; bottom: 8px; color: #77716a; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #dedbd5; border-radius: 50%; background: #f7f7f5; }
+.home-brand-strip:hover .home-brand-track, .home-brand-strip:focus-within .home-brand-track, .home-brand-strip.is-paused .home-brand-track { animation-play-state: paused; }
+@keyframes home-brand-travel { to { transform: translateX(-50%); } }
+.home-application { margin: 60px auto 0; width: calc(100% - 80px); max-width: 1440px; display: grid; grid-template-columns: 1.1fr 1fr; background: #f5f4f1; }
+.home-application-photo { min-height: 570px; position: relative; }
+.home-application-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 65%; }
+.home-application-copy { padding: 65px clamp(30px, 4vw, 72px); align-self: center; }
+.home-kicker { display: inline-block; padding: 6px 11px; border-radius: 20px; background: #eae7e1; font-size: 11px; color: #746859; text-transform: uppercase; letter-spacing: .1em; }
+.home-application-copy h2 { font-family: inherit; font-size: clamp(30px, 3.5vw, 52px); font-weight: 500; line-height: 1.15; letter-spacing: -.05em; margin: 25px 0; }
+.home-application-copy p { max-width: 380px; color: #746e66; font-size: 16px; line-height: 1.8; }
+.home-primary-action { display: inline-flex; gap: 25px; align-items: center; padding: 15px 22px; color: #fffaf3; background: #25211e; border-radius: 6px; margin-top: 30px; font-size: 13px; }
+.home-primary-action:hover { background: #514338; }
+.home-secondary-actions { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-top: 28px; }
+.home-secondary-actions a { display: inline-flex; align-items: center; gap: 12px; font-size: 12px; color: #655348; padding-block: 7px; border-bottom: 1px solid #cfc7bb; }
+.home-resources { max-width: 1360px; margin: 0 auto; padding: 60px 40px 70px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 35px; }
+.home-resources a { display: flex; align-items: center; gap: 16px; padding: 23px 0; border-bottom: 1px solid #ded9d1; font-size: 16px; }
+.home-resources a span { font-size: 11px; color: #958a7e; }
+.home-resources a svg { margin-left: auto; }
+@media (max-width: 760px) {
+  .home-brand-strip { padding-block: 14px; }
+  .home-brand-group { min-width: 700px; gap: 55px; padding-inline: 35px; }
+  .home-brand-group img { width: 80px; height: 50px; }
+  .home-brand-group span { font-size: 21px; }
+  .home-application { margin-top: 28px; width: calc(100% - 32px); grid-template-columns: 1fr; }
+  .home-application-photo { min-height: 310px; }
+  .home-application-copy { padding: 32px 25px 38px; }
+  .home-application-copy h2 { font-size: 34px; }
+  .home-application-copy p { font-size: 14px; }
+  .home-resources { padding: 22px 24px 35px; grid-template-columns: 1fr; gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .home-brand-track { animation: none; } .home-brand-toggle { display: none; } }
