@@ -19,7 +19,7 @@ export default function AuthPage({ mode }) {
   const [reviewerId, setReviewerId] = useState("e_01");
   const [managerId, setManagerId] = useState("u_pm_demo");
   const [signingIn, setSigningIn] = useState(false);
-  const { startDemo, logout, staffUser } = useAuth();
+  const { startDemo, logout, staffUser, signInLocal, localAuthEnabled, user } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const target = params.get("redirect");
@@ -27,6 +27,7 @@ export default function AuthPage({ mode }) {
   const staff = mode === "staff";
   const registering = mode === "register";
   const resetting = mode === "reset";
+  const configuredLocalEmail = import.meta.env.VITE_LOCAL_AUTH_EMAIL || "";
   const title = staff
     ? "CEDA staff sign in"
     : resetting
@@ -35,14 +36,35 @@ export default function AuthPage({ mode }) {
         ? "Create an account"
         : "Sign in";
 
+  if (!staff && user && mode === "login")
+    return <Navigate to={safeReturnPath(target, "submitter")} replace />;
+
   if (staff && staffUser)
     return <Navigate to={safeReturnPath(target, staffUser.role)} replace />;
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
-    setMessage(staff
-      ? "Staff access is not enabled for OIDC sessions yet. Use demo access below."
-      : "Use CEDA secure sign in below. Account creation and password recovery are provided by the identity service.");
+    if (staff) {
+      setMessage("Staff access is not enabled for OIDC sessions yet. Use demo access below.");
+      return;
+    }
+    if (!localAuthEnabled) {
+      setMessage("Use CEDA secure sign in below. Account creation and password recovery are provided by the identity service.");
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    setSigningIn(true);
+    setMessage("");
+    try {
+      await signInLocal(form.get("email"), form.get("password"));
+      navigate(safeReturnPath(target, "submitter"), { replace: true });
+    } catch (error) {
+      setMessage(error?.status === 401
+        ? "Email or password is incorrect. Check your details and try again."
+        : error?.message || "Sign in failed. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
   }
 
   async function beginOidcSignIn() {
@@ -87,7 +109,7 @@ export default function AuthPage({ mode }) {
                 <Link to="/login">applicant page</Link>.
               </p>
             )}
-            {staff ? <form onSubmit={submit}>
+            {staff || (localAuthEnabled && !registering && !resetting) ? <form onSubmit={submit}>
               {registering && (
                 <label>
                   Full name
@@ -106,6 +128,7 @@ export default function AuthPage({ mode }) {
                   type="email"
                   autoComplete={staff ? "username" : "email"}
                   placeholder={staff ? "name@ceda.co.bw" : "you@example.com"}
+                  defaultValue={!staff && localAuthEnabled ? configuredLocalEmail : undefined}
                   required
                   maxLength={254}
                 />
@@ -120,7 +143,7 @@ export default function AuthPage({ mode }) {
                       autoComplete={
                         registering ? "new-password" : "current-password"
                       }
-                      minLength={8}
+                      minLength={localAuthEnabled && !staff ? undefined : 8}
                       required
                     />
                     <button
@@ -146,7 +169,7 @@ export default function AuthPage({ mode }) {
                   {message}
                 </p>
               )}
-              <button className="auth-entry-submit" type="submit">
+              <button className="auth-entry-submit" type="submit" disabled={signingIn}>
                 {staff ? "Sign in" : title}
                 <ArrowRight size={17} />
               </button>

@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient.js";
 
 const dataOf = (response) => response?.data ?? response;
 const pendingSubmitKeys = new Map();
@@ -37,13 +37,24 @@ export const applicationsApi = {
     return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}`));
   },
 
-  async save(applicationId, expectedRevision, fields) {
+  async save(applicationId, expectedRevision, fields, budget) {
     return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}`, {
       method: "PATCH",
-      body: { expectedRevision, fields },
+      body: { expectedRevision, fields, budget },
     }));
   },
 
+  async uploadDocument(applicationId, expectedRevision, file, metadata) {
+    const params = new URLSearchParams({ name: metadata.name, category: metadata.category, expectedRevision: String(expectedRevision) });
+    if (metadata.expiresAt) params.set("expiresAt", metadata.expiresAt);
+    return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}/documents?${params}`, {
+      method: "POST", body: file, rawBody: true, headers: { "Content-Type": "application/octet-stream" },
+    }));
+  },
+
+  async downloadDocument(applicationId, documentId) {
+    return apiRequest(`/applications/${encodeURIComponent(applicationId)}/documents/${encodeURIComponent(documentId)}`, { responseType: "blob" });
+  },
   async submit(applicationId, expectedRevision, authenticatedUserId) {
     const command = submissionKey(authenticatedUserId, applicationId, expectedRevision);
     return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}/submit`, {

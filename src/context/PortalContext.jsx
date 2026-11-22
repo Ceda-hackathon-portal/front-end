@@ -193,11 +193,44 @@ export function PortalProvider({ children }) {
   const uploading = useRef(false);
   const ownDraftSaves = useRef(new Map());
   const ownProfileSave = useRef(null);
+  const hydratedApplications = useRef(new Set());
   const [documentsBusy, setDocumentsBusy] = useState(false);
+  const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 0 });
   const [storageWarning, setStorageWarning] = useState(store.getWarning);
   const [accountProfile, setAccountProfile] = useState(emptyProfile);
   const [accountProfileOwnerId, setAccountProfileOwnerId] = useState(null);
   const apiApplicant = Boolean(user && !user.demo);
+  useEffect(() => {
+    if (!apiApplicant || !user?.id || hydratedApplications.current.has(user.id)) return;
+    hydratedApplications.current.add(user.id);
+    const pending = readCurrentState().drafts.filter((draft) => draft.backendOwnerId === user.id);
+    Promise.all(pending.map(async (draft) => {
+      const remote = await applicationsApi.read(draft.id);
+      return { id: draft.id, remote };
+    })).then((records) => commit((current) => {
+      const remoteDocuments = records.flatMap(({ id, remote }) => remote.documents.map((document) => ({
+        ...document, applicationId: id, backendDocumentId: document.id,
+        verification: "Not verified", storage: "server",
+      })));
+      return {
+        ...current,
+        documents: [...current.documents.filter((document) => !document.backendDocumentId), ...remoteDocuments],
+        drafts: current.drafts.map((draft) => {
+          const record = records.find((item) => item.id === draft.id);
+          if (!record) return draft;
+          return {
+            ...draft, ...record.remote.fields, backendRevision: record.remote.revision,
+            budgetItems: record.remote.budget.items,
+            fundingRequested: record.remote.budget.fundingRequested,
+            budgetNotApplicable: record.remote.budget.notApplicable,
+            documentIds: record.remote.documents.map((document) => document.id),
+          };
+        }),
+      };
+    })).catch(() => {
+      hydratedApplications.current.delete(user.id);
+    });
+  }, [apiApplicant, user?.id]);
   const accountProfileKey = user?.id
     ? `ceda.api.profile.v1.${user.id}`
     : null;
@@ -304,6 +337,9 @@ export function PortalProvider({ children }) {
       const draft = {
         ...blankDraft(application.id, application.fields.theme || theme),
         programmeId: application.programmeId,
+        budgetItems: application.budget?.items || [],
+        fundingRequested: application.budget?.fundingRequested || "",
+        budgetNotApplicable: Boolean(application.budget?.notApplicable),
         backendOwnerId: user.id,
         backendRevision: application.revision,
         ...application.fields,
@@ -338,7 +374,7 @@ export function PortalProvider({ children }) {
           solution: draft.solution,
           impact: draft.impact,
           team: draft.team,
-        });
+        }, { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) });
         const next = {
           ...previous,
           ...draft,
@@ -468,13 +504,16 @@ export function PortalProvider({ children }) {
       throw new Error("Choose between 1 and 10 files.");
     uploading.current = true;
     setDocumentsBusy(true);
+    setDocumentsProgress({ completed: 0, total: files.length });
     try {
       const prepared = [];
       for (const file of files)
         prepared.push(await prepareDocument(file, category, expiresAt));
       const current = readCurrentState();
       const plan = documentUploadPlan(prepared, current.documents);
-      const attachedIds = plan.ids;
+      let attachedIds = plan.ids;
+      let plannedDocuments = plan.documents;
+      let savedFiles = plan.files;
       const target = current.drafts.find((draft) => draft.id === draftId);
       if (draftId && !target)
         throw new Error(
@@ -482,7 +521,21 @@ export function PortalProvider({ children }) {
         );
       if (target && new Set([...target.documentIds, ...attachedIds]).size > 10)
         throw new Error("Attach up to 10 files per application.");
-      await saveDocumentFiles(plan.files);
+      let backendRevision = target?.backendRevision;
+      if (target?.backendOwnerId === user.id) {
+        const uploaded = [];
+        for (const item of prepared) {
+          const result = await applicationsApi.uploadDocument(target.id, backendRevision, item.blob, item.metadata);
+          backendRevision = result.revision;
+          uploaded.push({ ...item.metadata, id: result.id, backendDocumentId: result.id, applicationId: target.id, name: result.name, size: result.sizeBytes, type: result.contentType, sha256: result.sha256, uploadedAt: result.uploadedAt, storage: "server" });
+          setDocumentsProgress({ completed: uploaded.length, total: files.length });
+        }
+        plannedDocuments = uploaded;
+        attachedIds = uploaded.map((item) => item.id);
+        savedFiles = uploaded.map((item, index) => ({ id: item.id, blob: prepared[index].blob }));
+      }
+      await saveDocumentFiles(savedFiles);
+      if (target?.backendOwnerId !== user.id) setDocumentsProgress({ completed: files.length, total: files.length });
       await commit((latest) => {
         const liveDraft = latest.drafts.find((draft) => draft.id === draftId);
         if (draftId && !liveDraft)
@@ -498,7 +551,7 @@ export function PortalProvider({ children }) {
           ...latest,
           documents: [
             ...latest.documents,
-            ...plan.documents.filter(
+            ...plannedDocuments.filter(
               (document) =>
                 !latest.documents.some(
                   (existing) => existing.id === document.id,
@@ -509,6 +562,7 @@ export function PortalProvider({ children }) {
             draft.id === draftId
               ? {
                   ...draft,
+                ...(backendRevision !== undefined ? { backendRevision } : {}),
                   documentIds: [
                     ...new Set([...draft.documentIds, ...attachedIds]),
                   ],
@@ -522,6 +576,7 @@ export function PortalProvider({ children }) {
     } finally {
       uploading.current = false;
       setDocumentsBusy(false);
+      setDocumentsProgress({ completed: 0, total: 0 });
     }
   }
   async function attachDocument(draftId, documentId, remove = false) {
@@ -595,8 +650,6 @@ export function PortalProvider({ children }) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
     if (apiApplicant && draft.backendOwnerId === user.id) {
-      if (draft.documentIds.length || draft.budgetItems.some((item) => item.amount || item.description))
-        throw new Error("The backend currently accepts the six application answers only. Documents and budget details cannot be submitted yet; your saved draft is unchanged.");
       const storedDraft = readCurrentState().drafts.find(
         (item) => item.id === draft.id && item.backendOwnerId === user.id,
       );
@@ -610,20 +663,23 @@ export function PortalProvider({ children }) {
         impact: draft.impact,
         team: draft.team,
       };
+      const budget = { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) };
       let submitRevision = storedDraft.backendSubmitRevision;
       let submission = storedDraft.backendPendingSubmission;
       if (submitRevision !== undefined &&
-          JSON.stringify(fields) !== JSON.stringify(storedDraft.backendSubmitFields)) {
+          (JSON.stringify(fields) !== JSON.stringify(storedDraft.backendSubmitFields) ||
+           JSON.stringify(budget) !== JSON.stringify(storedDraft.backendSubmitBudget))) {
         throw new Error("A submission retry is already in progress for the previously saved answers. Reload the draft before changing it.");
       }
       if (submitRevision === undefined) {
-        const saved = await applicationsApi.save(draft.id, storedDraft.backendRevision, fields);
+        const saved = await applicationsApi.save(draft.id, storedDraft.backendRevision, fields, budget);
         submitRevision = saved.revision;
         await commit((current) => ({
           ...current,
           drafts: current.drafts.map((item) => item.id === draft.id
             ? { ...item, ...fields, backendRevision: submitRevision,
-                backendSubmitRevision: submitRevision, backendSubmitFields: fields }
+                backendSubmitRevision: submitRevision, backendSubmitFields: fields,
+                backendSubmitBudget: budget }
             : item),
         }));
       }
@@ -638,6 +694,7 @@ export function PortalProvider({ children }) {
       }
       const verified = await applicationsApi.readSubmission(draft.id, submission.id);
       const now = verified.submittedAt;
+      const serverDocuments = verified.documents.map((document) => ({ ...document, applicationId: draft.id, backendDocumentId: document.id, verification: "Not verified", storage: "server" }));
       const version = {
         title: verified.fields.title,
         theme: verified.fields.theme,
@@ -645,11 +702,19 @@ export function PortalProvider({ children }) {
         solution: verified.fields.solution,
         impact: verified.fields.impact,
         team: verified.fields.team,
+        budgetItems: verified.budget.items,
+        fundingRequested: verified.budget.fundingRequested,
+        budgetNotApplicable: verified.budget.notApplicable,
+        documents: serverDocuments,
         number: 1,
       };
       const idea = {
         ...version,
         id: verified.applicationId,
+        documentIds: serverDocuments.map((document) => document.id),
+        budgetItems: verified.budget.items,
+        fundingRequested: verified.budget.fundingRequested,
+        budgetNotApplicable: verified.budget.notApplicable,
         backendOwnerId: user.id,
         backendSubmissionId: verified.id,
         reference: verified.reference,
@@ -1102,6 +1167,7 @@ export function PortalProvider({ children }) {
         draft,
         storageWarning,
         documentsBusy,
+        documentsProgress,
         createDraft,
         saveDraft,
         saveProfile,

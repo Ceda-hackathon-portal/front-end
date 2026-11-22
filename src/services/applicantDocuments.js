@@ -1,3 +1,4 @@
+import { applicationsApi } from "./applicationApi.js";
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const formats = {
   pdf: "application/pdf",
@@ -175,7 +176,9 @@ export async function prepareDocument(file, category, expiresAt = "") {
   return { metadata, blob };
 }
 export async function downloadDocument(document) {
-  const blob = await getDocumentFile(document.id);
+  const blob = document.storage === "server"
+    ? await applicationsApi.downloadDocument(document.applicationId, document.backendDocumentId || document.id)
+    : await getDocumentFile(document.id);
   const digest = await crypto.subtle.digest(
     "SHA-256",
     await blob.arrayBuffer(),

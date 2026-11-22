@@ -1,4 +1,5 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001")
+import { fetchFailure } from "./fetchFailure.js";
+const API_BASE_URL = (import.meta.env?.VITE_API_URL || "http://localhost:3001")
   .replace(/\/+$/, "")
   .replace(/\/api\/v1$/, "");
 const API_PREFIX = "/api/v1";
@@ -18,6 +19,7 @@ export class ApiError extends Error {
 
 let csrfToken = null;
 let csrfRequest = null;
+let sessionRequest = null;
 
 function notifySessionExpired() {
   if (typeof window !== "undefined") {
@@ -87,12 +89,7 @@ async function obtainCsrfToken(signal) {
     return await csrfRequest;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new ApiError({
-      status: 0,
-      code: "API_UNAVAILABLE",
-      message: "Cannot reach the CEDA API. Check that the local backend is running on localhost:3001.",
-      cause: error,
-    });
+    throw new ApiError(fetchFailure(error));
   }
 }
 
@@ -105,7 +102,7 @@ export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Accept", "application/json");
 
-  if (options.body !== undefined && !(options.body instanceof FormData)) {
+  if (options.body !== undefined && !(options.body instanceof FormData) && options.rawBody !== true) {
     headers.set("Content-Type", "application/json");
   }
   if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
@@ -122,17 +119,12 @@ export async function apiRequest(path, options = {}) {
       headers,
       credentials: "include",
       body:
-        options.body === undefined || options.body instanceof FormData
+        options.body === undefined || options.body instanceof FormData || options.rawBody === true
           ? options.body
           : JSON.stringify(options.body),
     });
   } catch (cause) {
-    throw new ApiError({
-      status: 0,
-      code: "API_UNAVAILABLE",
-      message: "Cannot reach the CEDA API. Check that the local backend is running on localhost:3001.",
-      cause,
-    });
+    throw new ApiError(fetchFailure(cause));
   }
 
   if (response.status === 204) return null;
@@ -147,6 +139,7 @@ export async function apiRequest(path, options = {}) {
   }
   if (response.headers.get("content-length") === "0") return null;
   const contentType = response.headers.get("content-type") || "";
+  if (options.responseType === "blob") return response.blob();
   return contentType.includes("application/json") ? response.json() : response.text();
 }
 
@@ -162,9 +155,23 @@ export const authApi = {
     });
     return result?.data || result;
   },
-  async session(options) {
-    const result = await apiRequest("/auth/session", options);
+  async localLogin(email, password, options = {}) {
+    const token = await obtainCsrfToken(options.signal);
+    const result = await apiRequest("/auth/local-login", {
+      ...options,
+      method: "POST",
+      body: { email, password },
+      headers: { ...options.headers, "X-CSRF-Token": token },
+    });
     return result?.data || result;
+  },
+  session(options) {
+    if (!sessionRequest) {
+      sessionRequest = apiRequest("/auth/session", options)
+        .then((result) => result?.data || result)
+        .finally(() => { sessionRequest = null; });
+    }
+    return sessionRequest;
   },
   logout: (options) => apiRequest("/auth/logout", { ...options, method: "POST" }),
 };
