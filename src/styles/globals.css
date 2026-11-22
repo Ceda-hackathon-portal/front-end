@@ -93,7 +93,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
   border-radius: 18px;
   overflow: hidden;
   position: relative;
-  background: url('/images/ceda-hero1.png') center / cover;
+  background: #302a26;
 }
 .ceda-hero-shade {
   position: absolute;
@@ -147,7 +147,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 .guide-details + .button { margin-top: 30px; }
 .service-search { margin-bottom: 32px; }
 .auth-page { padding: 150px 24px 85px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 64px; max-width: 1180px; align-items: start; }
-.auth-story { min-height: 620px; background: linear-gradient(120deg, #050b15bb, #0b1f3a4d), url('/images/login.jpg') center/cover; border-radius: 30px; padding: 50px 40px; display: flex; flex-direction: column; justify-content: flex-end; color: white; }
+.auth-story { min-height: 620px; background: linear-gradient(120deg, #050b15bb, #0b1f3a4d), url('/images/optimized/login-1920.webp') center/cover; border-radius: 30px; padding: 50px 40px; display: flex; flex-direction: column; justify-content: flex-end; color: white; }
 .auth-story .eyebrow { color: #cbd5e1; }
 .auth-story h1 { font-size: 44px; margin-top: 18px; line-height: 1.2; }
 .auth-story p { font-size: 14px; color: #cbd5e1; margin-top: 18px; }
