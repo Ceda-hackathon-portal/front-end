@@ -857,3 +857,13 @@
   margin-top: 12px;
   color: var(--ap-muted);
 }
+.ap-submission-confirmation { max-width: 720px; margin: 40px auto; text-align: center; padding: clamp(28px, 5vw, 56px); }
+.ap-submission-confirmation-icon { color: var(--ap-accent, #9c7957); margin-bottom: 20px; }
+.ap-submission-confirmation h1 { font-size: clamp(24px, 3vw, 34px); line-height: 1.2; margin-bottom: 14px; }
+.ap-submission-confirmation-details { margin: 28px 0; text-align: left; border-block: 1px solid var(--ap-line); }
+.ap-submission-confirmation-details div { display: flex; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--ap-line); }
+.ap-submission-confirmation-details div:last-child { border-bottom: 0; }
+.ap-submission-confirmation-details dt { color: var(--ap-muted); }
+.ap-submission-confirmation-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+.ap-submission-confirmation-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 28px 0 18px; }
+@media (max-width: 520px) { .ap-submission-confirmation-details div { display: block; } .ap-submission-confirmation-details dd { text-align: left; margin-top: 4px; } .ap-submission-confirmation-actions .ap-button { width: 100%; justify-content: center; } }

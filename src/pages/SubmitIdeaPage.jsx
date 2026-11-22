@@ -300,7 +300,7 @@ function ApplicationForm({ draft }) {
     setMessage("");
     try {
       const id = await submitApplication(form, person, confirmed);
-      navigate("/workspace/ideas/" + id + "?submitted=1", { replace: true });
+      navigate("/workspace/ideas/" + id + "/submitted", { replace: true });
     } catch (failure) {
       setMessage(failure.message);
       submissionLock.current = false;
