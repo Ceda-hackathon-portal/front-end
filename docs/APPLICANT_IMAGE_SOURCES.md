@@ -19,3 +19,5 @@ The portal shares one edge-to-edge hero layout. Page titles are functional label
 Checked 20 November 2026. These illustrate business activity, collaboration and preparing an application; they do not identify CEDA clients, staff or Botswana locations.
 
 The Pexels photographs use the [Pexels License](https://www.pexels.com/license/); the collaboration photo uses the [Unsplash License](https://unsplash.com/license). Source links retain creator attribution and provenance. The additional files are locally stored JPEG renditions at 1800 px width, without AI-generated alterations.
+
+Responsive delivery now uses compressed WebP copies of these same assets via `OptimizedImage`. Originals are retained. See `END_TO_END_TESTS.md` and `image-sizes.json` for generation settings and sizes.
