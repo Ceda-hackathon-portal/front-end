@@ -1,0 +1,158 @@
+[
+  {
+    "source": "public/images/CEDA1.png",
+    "originalBytes": 89680,
+    "mobileBytes": 50792,
+    "desktopBytes": 75106
+  },
+  {
+    "source": "public/images/Carousel1.jpg",
+    "originalBytes": 839547,
+    "mobileBytes": 20788,
+    "desktopBytes": 51640
+  },
+  {
+    "source": "public/images/Carousel2.jpg",
+    "originalBytes": 5080217,
+    "mobileBytes": 31316,
+    "desktopBytes": 138578
+  },
+  {
+    "source": "public/images/Carousel3.jpg",
+    "originalBytes": 1589750,
+    "mobileBytes": 43374,
+    "desktopBytes": 107682
+  },
+  {
+    "source": "public/images/Carousel4.jpg",
+    "originalBytes": 2229915,
+    "mobileBytes": 101738,
+    "desktopBytes": 433458
+  },
+  {
+    "source": "public/images/Carousel6.jpg",
+    "originalBytes": 5714125,
+    "mobileBytes": 44674,
+    "desktopBytes": 140246
+  },
+  {
+    "source": "public/images/Drone.jpg",
+    "originalBytes": 6131008,
+    "mobileBytes": 107330,
+    "desktopBytes": 388864
+  },
+  {
+    "source": "public/images/applicant-enterprise.jpg",
+    "originalBytes": 311479,
+    "mobileBytes": 63120,
+    "desktopBytes": 174932
+  },
+  {
+    "source": "public/images/applicant-guide.jpg",
+    "originalBytes": 304044,
+    "mobileBytes": 68470,
+    "desktopBytes": 160556
+  },
+  {
+    "source": "public/images/applicant-hero.png",
+    "originalBytes": 1738984,
+    "mobileBytes": 17074,
+    "desktopBytes": 48334
+  },
+  {
+    "source": "public/images/applicant-messages.jpg",
+    "originalBytes": 395092,
+    "mobileBytes": 57710,
+    "desktopBytes": 132932
+  },
+  {
+    "source": "public/images/applicant-programmes.png",
+    "originalBytes": 2427634,
+    "mobileBytes": 52622,
+    "desktopBytes": 143214
+  },
+  {
+    "source": "public/images/ceda-hero1.png",
+    "originalBytes": 62204,
+    "mobileBytes": 39632,
+    "desktopBytes": 49480
+  },
+  {
+    "source": "public/images/ceda-innovation.png",
+    "originalBytes": 1793436,
+    "mobileBytes": 47632,
+    "desktopBytes": 84450
+  },
+  {
+    "source": "public/images/login.jpg",
+    "originalBytes": 3674762,
+    "mobileBytes": 80452,
+    "desktopBytes": 242840
+  },
+  {
+    "source": "public/images/staff-applications.jpg",
+    "originalBytes": 115897,
+    "mobileBytes": 16826,
+    "desktopBytes": 36778
+  },
+  {
+    "source": "public/images/staff-assignments.jpg",
+    "originalBytes": 276828,
+    "mobileBytes": 42556,
+    "desktopBytes": 119998
+  },
+  {
+    "source": "public/images/staff-decisions.jpg",
+    "originalBytes": 160004,
+    "mobileBytes": 28970,
+    "desktopBytes": 69710
+  },
+  {
+    "source": "public/images/staff-documents.jpg",
+    "originalBytes": 217046,
+    "mobileBytes": 41844,
+    "desktopBytes": 102422
+  },
+  {
+    "source": "public/images/staff-insights.jpg",
+    "originalBytes": 192403,
+    "mobileBytes": 25688,
+    "desktopBytes": 66552
+  },
+  {
+    "source": "public/images/staff-overview.jpg",
+    "originalBytes": 106925,
+    "mobileBytes": 12686,
+    "desktopBytes": 34218
+  },
+  {
+    "source": "public/images/staff-programmes.jpg",
+    "originalBytes": 200109,
+    "mobileBytes": 27766,
+    "desktopBytes": 82358
+  },
+  {
+    "source": "public/images/staff-review.jpg",
+    "originalBytes": 196280,
+    "mobileBytes": 38502,
+    "desktopBytes": 84568
+  },
+  {
+    "source": "public/images/staff-screening.jpg",
+    "originalBytes": 112888,
+    "mobileBytes": 15226,
+    "desktopBytes": 38622
+  },
+  {
+    "source": "public/images/staff-settings.jpg",
+    "originalBytes": 90464,
+    "mobileBytes": 12634,
+    "desktopBytes": 29218
+  },
+  {
+    "source": "public/images/staff-system.jpg",
+    "originalBytes": 407220,
+    "mobileBytes": 77072,
+    "desktopBytes": 258668
+  }
+]
