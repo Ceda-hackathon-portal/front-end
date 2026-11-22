@@ -18,7 +18,7 @@ import {
 
 import { applicationReference } from "../utils/applicant";
 import { applicationsApi } from "../services/applicationApi";
-import { restoreRemoteApplications } from "../utils/applicationPersistence.js";
+import { budgetRows, restoreRemoteApplications } from "../utils/applicationPersistence.js";
 
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -345,11 +345,14 @@ export function PortalProvider({ children }) {
       const programmeVersionId = import.meta.env.VITE_CEDA_PROGRAMME_VERSION_ID;
       if (!programmeId || !programmeVersionId)
         throw new Error("The backend has no published programme configured for local applications.");
-      const application = await applicationsApi.create({ programmeId, programmeVersionId });
+      let application = await applicationsApi.create({ programmeId, programmeVersionId });
+      // Save a theme chosen from a link straight away, so it survives a reload or another device.
+      if (theme)
+        application = await applicationsApi.save(application.id, application.revision, { ...application.fields, theme }, application.budget);
       const draft = {
-        ...blankDraft(application.id, application.fields.theme || theme),
+        ...blankDraft(application.id, theme),
         programmeId: application.programmeId,
-        budgetItems: application.budget?.items || [],
+        budgetItems: budgetRows(application.budget?.items),
         fundingRequested: application.budget?.fundingRequested || "",
         budgetNotApplicable: Boolean(application.budget?.notApplicable),
         backendOwnerId: user.id,

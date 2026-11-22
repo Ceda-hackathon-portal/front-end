@@ -34,6 +34,11 @@ function apiUrl(path) {
   return `${API_BASE_URL}${API_PREFIX}${path}`;
 }
 
+function fieldsFromDetails(details) {
+  if (!Array.isArray(details)) return undefined;
+  return Object.fromEntries(details.filter((item) => item?.path).map((item) => [item.path, "Check this value."]));
+}
+
 async function readError(response) {
   let body = null;
   try {
@@ -53,7 +58,8 @@ async function readError(response) {
     status: response.status,
     code: error.code,
     message: error.message || statusMessages[response.status] || "The request could not be completed.",
-    fields: error.fields,
+    // The API reports field problems as details: [{ path, code }].
+    fields: error.fields || fieldsFromDetails(error.details),
     requestId: error.requestId || response.headers.get("x-request-id"),
   });
 }

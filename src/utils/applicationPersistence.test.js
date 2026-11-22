@@ -15,7 +15,8 @@ test("restores server drafts and submissions and keeps accounts isolated", () =>
   const restored = restoreRemoteApplications(current, owner, records);
   assert.deepEqual(restored.drafts.map((draft) => draft.id), ["other", "draft-a"]);
   assert.equal(restored.drafts[1].backendRevision, 8);
-  assert.deepEqual(restored.drafts[1].budgetItems, records[0].budget.items);
+  assert.deepEqual(restored.drafts[1].budgetItems.map(({ id, ...row }) => row), records[0].budget.items);
+  assert.ok(restored.drafts[1].budgetItems.every((row) => row.id), "restored rows need ids to be edited and removed");
   assert.deepEqual(restored.drafts[1].documentIds, ["doc-a"]);
   assert.equal(restored.ideas[0].backendSubmissionId, "sub-a");
   assert.equal(restored.ideas[0].reference, "CEDA-fictional");

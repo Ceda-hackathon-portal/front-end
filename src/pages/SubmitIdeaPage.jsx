@@ -18,6 +18,10 @@ import ApplicantDocuments, {
 } from "../components/applicant/ApplicantDocuments";
 import { saveDraftWithFeedback } from "../utils/applicationSaveFeedback.js";
 
+// Wait for a pause in typing before saving to the API, so one sentence is not fifty writes and audit records.
+const AUTOSAVE_PAUSE_MS = 700;
+const pause = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
 const hints = {
   title: "A short, descriptive name.",
   theme: "Choose the closest theme.",
@@ -173,13 +177,26 @@ function ApplicationForm({ draft }) {
       heading.current?.scrollIntoView({ block: "start", behavior: "instant" });
     previousStep.current = step;
   }, [step]);
-  function persistDraft(next, nextPerson) {
+  useEffect(() => {
+    if (!form.backendOwnerId || saved) return undefined;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [form.backendOwnerId, saved]);
+  function persistDraft(next, nextPerson, wait = 0) {
     const sequence = ++saveSequence.current;
+    const paused = wait ? pause(wait) : null;
     savingRef.current = true;
     setSaved(false);
     setSaving(true);
     const operation = pendingSave.current
-      .then(() => saveDraftWithFeedback(next, () => saveDraft(next, nextPerson)));
+      .then(() => paused)
+      .then(() => sequence === saveSequence.current
+        ? saveDraftWithFeedback(next, () => saveDraft(next, nextPerson))
+        : { ok: true }); // a newer edit carries these answers
     pendingSave.current = operation;
     operation.then((result) => {
       if (sequence !== saveSequence.current) return;
@@ -196,7 +213,7 @@ function ApplicationForm({ draft }) {
     setErrors({});
     setMessage("");
     setConfirmed(false);
-    persistDraft(next, nextPerson);
+    persistDraft(next, nextPerson, next.backendOwnerId ? AUTOSAVE_PAUSE_MS : 0);
   }
   async function reopenSavedDraft() {
     if (savingRef.current || documentsLocked || busy) return;
@@ -300,7 +317,9 @@ function ApplicationForm({ draft }) {
     setMessage("");
     try {
       const id = await submitApplication(form, person, confirmed);
-      navigate("/workspace/ideas/" + id + "/submitted", { replace: true });
+      // Only API submissions can be verified by the server. Local ones keep their local receipt.
+      const receipt = form.backendOwnerId ? "/submitted" : "?submitted=1";
+      navigate("/workspace/ideas/" + id + receipt, { replace: true });
     } catch (failure) {
       setMessage(failure.message);
       submissionLock.current = false;

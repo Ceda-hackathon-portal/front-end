@@ -13,6 +13,11 @@ function mapDocument(application, ownerId, document) {
   };
 }
 
+// The API stores budget rows without ids. The form needs one per row to edit and remove them.
+export function budgetRows(items = []) {
+  return items.map((item) => ({ ...item, id: item.id || crypto.randomUUID() }));
+}
+
 export function restoreRemoteApplications(current, ownerId, records) {
   const owned = records.filter((record) => record.ownerId === ownerId);
   const remoteIds = new Set(owned.map((record) => record.id));
@@ -29,7 +34,7 @@ export function restoreRemoteApplications(current, ownerId, records) {
       programmeVersionId: record.programmeVersionId,
       backendOwnerId: ownerId,
       backendRevision: record.revision,
-      budgetItems: record.budget.items,
+      budgetItems: budgetRows(record.budget.items),
       fundingRequested: record.budget.fundingRequested,
       budgetNotApplicable: record.budget.notApplicable,
       documentIds: record.documents.map((document) => document.id),
