@@ -22,7 +22,8 @@ export function AuthProvider({ children }) {
     let active = true;
     const handleExpiredSession = () => {
       if (!active) return;
-      setUser(null);
+      // A demo applicant has no server session, so an API 401 cannot expire it.
+      setUser((current) => (current?.demo ? current : null));
       setAuthError("");
     };
     window.addEventListener("ceda:session-expired", handleExpiredSession);
