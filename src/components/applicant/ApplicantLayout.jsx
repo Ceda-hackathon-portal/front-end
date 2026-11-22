@@ -1,3 +1,4 @@
+import OptimizedImage from '../shared/OptimizedImage'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Bell, ChevronDown, CircleHelp, FileText, Home, Layers, LogOut, Mail, Search, UserRound } from 'lucide-react'
@@ -84,7 +85,7 @@ export default function ApplicantLayout() {
       <div className="ap-stage">
         <div className="ap-masthead"
           style={{ '--ap-image-position': hero.position, '--ap-mobile-position': hero.mobilePosition }}>
-          {!dataLight && <img key={hero.image} className="ap-masthead-image" src={'/images/' + hero.image}
+          {!dataLight && <OptimizedImage key={hero.image} className="ap-masthead-image" name={hero.image} loading="eager"
             alt="" fetchPriority="high" decoding="async" />}
           <header className="ap-header">
             <Link to="/portal" className="ap-brand" aria-label="CEDA applicant portal home">
