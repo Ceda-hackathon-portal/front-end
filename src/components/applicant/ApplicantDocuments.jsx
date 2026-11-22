@@ -101,7 +101,9 @@ export default function ApplicantDocuments({
       setNotice("Files saved. You can reopen and download them from this application.");
       onChanged?.();
     } catch (failure) {
-      setError(failure.message);
+      setError(failure.status === 401 ? "Your session expired. Sign in again before uploading."
+        : failure.status === 409 ? "This application changed. Reopen the latest draft and retry the upload."
+          : failure.message || "Upload failed. Retry with the same file.");
     } finally {
       setBusy(false);
       onPendingChange?.(false);
@@ -124,7 +126,10 @@ export default function ApplicantDocuments({
       );
       onChanged?.();
     } catch (failure) {
-      setError(failure.message);
+      setError(failure.status === 401 ? "Your session expired. Sign in again before attaching."
+        : failure.status === 409 ? "This application changed. Reopen the latest draft and retry."
+          : failure.status === 404 ? "The stored file is missing. Choose the file again to upload it."
+            : failure.message || "The document could not be attached. Retry.");
     } finally {
       setBusy(false);
       onPendingChange?.(false);
@@ -216,7 +221,7 @@ export default function ApplicantDocuments({
       <DocumentList
         documents={selected}
         disabled={busy}
-        onRemove={draftId ? (id) => attach(id, true) : null}
+        onRemove={draftId && !draft?.backendOwnerId ? (id) => attach(id, true) : null}
       />
       {!selected.length && (
         <p className="ap-inline-note">

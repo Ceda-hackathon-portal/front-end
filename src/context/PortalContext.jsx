@@ -10,6 +10,7 @@ import {
 } from "../utils/applicantWorkflow";
 import {
   getDocumentFile,
+  copyDocumentToApplication,
   documentUploadPlan,
   prepareDocument,
   saveDocumentFiles,
@@ -612,6 +613,14 @@ export function PortalProvider({ children }) {
     }
   }
   async function attachDocument(draftId, documentId, remove = false) {
+    if (apiApplicant) {
+      const current = readCurrentState();
+      const draft = current.drafts.find((item) => item.id === draftId && item.backendOwnerId === user.id);
+      const document = current.documents.find((item) => item.id === documentId && item.backendOwnerId === user.id);
+      if (!draft || !document) throw new Error("The draft or document is no longer available in this account.");
+      if (remove) throw new Error("Documents already stored for this application cannot be removed from a draft.");
+      return copyDocumentToApplication(document, draftId, uploadDocuments);
+    }
     await commit((current) => {
       const draft = current.drafts.find((item) => item.id === draftId);
       if (
