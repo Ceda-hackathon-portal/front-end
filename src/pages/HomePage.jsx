@@ -1,3 +1,4 @@
+import OptimizedImage from '../components/shared/OptimizedImage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -5,23 +6,19 @@ import LandingHeader from '../components/shared/LandingHeader'
 import HomePageSections from '../components/home/HomePageSections'
 import VisionQuote from '../components/home/VisionQuote'
 
-// Picture names (files live in public/images). Add Carousel3, Carousel4 ... here.
 const slideNames = ['Carousel1', 'Carousel2', 'Carousel3', 'Carousel4']
-// File types tried in order, so Carousel1.jpg, .jpeg, .png or .webp all work.
-const extensions = ['jpg', 'jpeg', 'png', 'webp']
 const AUTOPLAY_MS = 6000
 
 function SlideImage({ name, active, first }) {
-  const [extIndex, setExtIndex] = useState(0)
-  if (extIndex >= extensions.length) return null
   return (
-    <img
+    <OptimizedImage
       className={'ceda-slide' + (active ? ' is-active' : '')}
-      src={'/images/' + name + '.' + extensions[extIndex]}
+      name={name + '.jpg'}
+      sizes="(max-width: 760px) 150svh, 100vw"
       alt=""
       loading={first ? 'eager' : 'lazy'}
-      fetchPriority={first ? 'high' : 'auto'}
-      onError={() => setExtIndex((current) => current + 1)}
+      decoding="async"
+      fetchPriority={first ? 'high' : 'low'}
     />
   )
 }
@@ -29,26 +26,39 @@ function SlideImage({ name, active, first }) {
 export default function HomePage() {
   const heroRef = useRef(null)
   const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const paused = hovered || focused
   const count = slideNames.length
 
   const go = useCallback((next) => setIndex((next + count) % count), [count])
 
-  // Shrinking hero on scroll (unchanged)
   useEffect(() => {
     const hero = heroRef.current
-    if (!hero) return
+    if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let frame = 0
+    let lastProgress = -1
 
-    function onScroll() {
+    function updateHero() {
+      frame = 0
       const progress = Math.min(Math.max(window.scrollY / 600, 0), 1)
+      if (progress === lastProgress) return
+      lastProgress = progress
       hero.style.width = (100 - progress * 40) + '%'
       hero.style.borderRadius = 'calc(' + (18 * (1 - progress)) + 'px + ' + (progress * 50) + '%)'
       hero.style.setProperty('--hero-copy-opacity', String(Math.max(0, 1 - progress * 1.6)))
     }
 
-    onScroll()
+    function onScroll() {
+      if (!frame) frame = window.requestAnimationFrame(updateHero)
+    }
+
+    updateHero()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.cancelAnimationFrame(frame)
+    }
   }, [])
 
   // Autoplay, stopped on hover/focus and for people who prefer reduced motion
@@ -65,10 +75,12 @@ export default function HomePage() {
         className="ceda-hero-frame"
         aria-roledescription="carousel"
         aria-label="CEDA Innovation Portal highlights"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocus={() => setPaused(true)}
-        onBlur={() => setPaused(false)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={event => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+        }}
       >
         <LandingHeader />
         <div className="ceda-hero-image" ref={heroRef}>
@@ -167,6 +179,7 @@ export default function HomePage() {
         .ceda-carousel-arrow:focus-visible,
         .ceda-carousel-dots button:focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }
         @media (max-width: 700px) {
+          .ceda-hero-image .ceda-slide:first-of-type { object-position: 85% center; }
           .ceda-carousel-arrow { width: 38px; height: 38px; }
           .ceda-carousel-arrow.is-prev { left: 10px; }
           .ceda-carousel-arrow.is-next { right: 10px; }
