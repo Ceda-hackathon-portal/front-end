@@ -1,3 +1,4 @@
+import OptimizedImage from "../components/shared/OptimizedImage";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronDown, Eye, EyeOff } from "lucide-react";
@@ -292,11 +293,13 @@ export default function AuthPage({ mode }) {
           className="auth-entry-visual"
           aria-label={staff ? "CEDA staff workspace" : "CEDA Innovation Portal"}
         >
-          <img
-            src={
+          <OptimizedImage
+            sizes="(max-width: 700px) 1px, 50vw"
+            loading="lazy"
+            name={
               staff
-                ? "/images/staff-overview.jpg"
-                : "/images/applicant-programmes.png"
+                ? "staff-overview.jpg"
+                : "ceda-innovation.png"
             }
             alt=""
             fetchPriority="high"
