@@ -26,7 +26,7 @@ const legalLinks = [
   ['Help', '/help'],
 ]
 
-export default function Footer({ showSignature = false }) {
+export default function Footer() {
   const { requireAuth } = useAuth()
   const navigate = useNavigate()
   const [feedback, setFeedback] = useState('')
@@ -125,7 +125,6 @@ export default function Footer({ showSignature = false }) {
             <span key={label}>{renderLink(label, href)}</span>
           ))}
         </div>
-        {showSignature && <div className="cf-signature" aria-hidden="true">CEDA PORTAL</div>}
       </div>
 
     </footer>

@@ -299,7 +299,7 @@ export default function AuthPage({ mode }) {
             name={
               staff
                 ? "staff-overview.jpg"
-                : "ceda-innovation.png"
+                : "login.jpg"
             }
             alt=""
             fetchPriority="high"
