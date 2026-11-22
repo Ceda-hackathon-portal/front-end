@@ -6,7 +6,7 @@ import { roleHome } from '../../utils/portal'
 // Presentation-only gate. The future API must independently enforce all permissions.
 // Applicant routes use the applicant session; every other route uses the separate staff session.
 export default function ProtectedRoute({ roles, headingAs: Heading = 'h1' }) {
-  const { user, staffUser, requireAuth } = useAuth()
+  const { user, staffUser, requireAuth, authLoading, authError, retryAuthSession } = useAuth()
   const location = useLocation()
   const forApplicants = roles.includes('submitter')
 
@@ -25,6 +25,15 @@ export default function ProtectedRoute({ roles, headingAs: Heading = 'h1' }) {
   }
 
   if (user && roles.includes(user.role)) return <Outlet />
+  if (authLoading) return <section className="container page-section" role="status">Checking your session…</section>
+  if (authError) return (
+    <section className="container page-section access-gate" role="alert">
+      <span className="eyebrow">CEDA connection</span>
+      <Heading>Your session could not be checked.</Heading>
+      <p>{authError}</p>
+      <button className="button button-primary" type="button" onClick={retryAuthSession}>Try again</button>
+    </section>
+  )
   return (
     <section className="container page-section access-gate">
       <span className="feature-icon"><LockKeyhole size={26} /></span>

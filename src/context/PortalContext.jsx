@@ -16,6 +16,7 @@ import {
 } from "../services/applicantDocuments";
 
 import { applicationReference } from "../utils/applicant";
+import { applicationsApi } from "../services/applicationApi";
 
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -177,7 +178,7 @@ function initialState() {
   }
 }
 export function PortalProvider({ children }) {
-  const { staffUser } = useAuth();
+  const { user, staffUser } = useAuth();
   const admin = useAdmin();
   const [initial] = useState(initialState);
   const [store] = useState(() =>
@@ -192,8 +193,68 @@ export function PortalProvider({ children }) {
   const uploading = useRef(false);
   const ownDraftSaves = useRef(new Map());
   const ownProfileSave = useRef(null);
+  const hydratedApplications = useRef(new Set());
   const [documentsBusy, setDocumentsBusy] = useState(false);
+  const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 0 });
   const [storageWarning, setStorageWarning] = useState(store.getWarning);
+  const [accountProfile, setAccountProfile] = useState(emptyProfile);
+  const [accountProfileOwnerId, setAccountProfileOwnerId] = useState(null);
+  const apiApplicant = Boolean(user && !user.demo);
+  useEffect(() => {
+    if (!apiApplicant || !user?.id || hydratedApplications.current.has(user.id)) return;
+    hydratedApplications.current.add(user.id);
+    const pending = readCurrentState().drafts.filter((draft) => draft.backendOwnerId === user.id);
+    Promise.all(pending.map(async (draft) => {
+      const remote = await applicationsApi.read(draft.id);
+      return { id: draft.id, remote };
+    })).then((records) => commit((current) => {
+      const remoteDocuments = records.flatMap(({ id, remote }) => remote.documents.map((document) => ({
+        ...document, applicationId: id, backendDocumentId: document.id,
+        verification: "Not verified", storage: "server",
+      })));
+      return {
+        ...current,
+        documents: [...current.documents.filter((document) => !document.backendDocumentId), ...remoteDocuments],
+        drafts: current.drafts.map((draft) => {
+          const record = records.find((item) => item.id === draft.id);
+          if (!record) return draft;
+          return {
+            ...draft, ...record.remote.fields, backendRevision: record.remote.revision,
+            budgetItems: record.remote.budget.items,
+            fundingRequested: record.remote.budget.fundingRequested,
+            budgetNotApplicable: record.remote.budget.notApplicable,
+            documentIds: record.remote.documents.map((document) => document.id),
+          };
+        }),
+      };
+    })).catch(() => {
+      hydratedApplications.current.delete(user.id);
+    });
+  }, [apiApplicant, user?.id]);
+  const accountProfileKey = user?.id
+    ? `ceda.api.profile.v1.${user.id}`
+    : null;
+  useEffect(() => {
+    if (!apiApplicant || !accountProfileKey) {
+      setAccountProfile(copy(emptyProfile));
+      setAccountProfileOwnerId(null);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(accountProfileKey);
+      setAccountProfile({
+        ...copy(emptyProfile),
+        ...(stored ? JSON.parse(stored) : {}),
+      });
+    } catch {
+      setAccountProfile(copy(emptyProfile));
+    }
+    setAccountProfileOwnerId(user.id);
+  }, [apiApplicant, accountProfileKey]);
+  const currentAccountProfile =
+    apiApplicant && accountProfileOwnerId === user.id
+      ? accountProfile
+      : emptyProfile;
   useEffect(
     () =>
       store.subscribe((next, warning) => {
@@ -267,6 +328,29 @@ export function PortalProvider({ children }) {
   async function createDraft(theme = "") {
     if (theme && !themes.some((item) => item.id === theme))
       throw new Error("Choose an available theme.");
+    if (apiApplicant) {
+      const programmeId = import.meta.env.VITE_CEDA_PROGRAMME_ID;
+      const programmeVersionId = import.meta.env.VITE_CEDA_PROGRAMME_VERSION_ID;
+      if (!programmeId || !programmeVersionId)
+        throw new Error("The backend has no published programme configured for local applications.");
+      const application = await applicationsApi.create({ programmeId, programmeVersionId });
+      const draft = {
+        ...blankDraft(application.id, application.fields.theme || theme),
+        programmeId: application.programmeId,
+        budgetItems: application.budget?.items || [],
+        fundingRequested: application.budget?.fundingRequested || "",
+        budgetNotApplicable: Boolean(application.budget?.notApplicable),
+        backendOwnerId: user.id,
+        backendRevision: application.revision,
+        ...application.fields,
+      };
+      await commit((current) => ({
+        ...current,
+        drafts: [draft, ...current.drafts.filter((item) => item.id !== draft.id)],
+        activeDraftId: draft.id,
+      }));
+      return draft.id;
+    }
     const draft = blankDraft(crypto.randomUUID(), theme);
     await commit((current) => ({
       ...current,
@@ -277,6 +361,39 @@ export function PortalProvider({ children }) {
   }
   async function saveDraft(draft, profile) {
     try {
+      if (apiApplicant && draft.backendOwnerId === user.id) {
+        const current = readCurrentState();
+        const previous = current.drafts.find((item) => item.id === draft.id);
+        if (!previous || previous.backendOwnerId !== user.id)
+          throw new Error("This backend draft is not available in the current account.");
+        checkDraftRevision(draft, previous);
+        const saved = await applicationsApi.save(draft.id, previous.backendRevision, {
+          title: draft.title,
+          theme: draft.theme,
+          problem: draft.problem,
+          solution: draft.solution,
+          impact: draft.impact,
+          team: draft.team,
+        }, { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) });
+        const next = {
+          ...previous,
+          ...draft,
+          backendRevision: saved.revision,
+          editRevision: revision(previous.editRevision) + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        await commit((latest) => ({
+          ...latest,
+          drafts: latest.drafts.map((item) => item.id === draft.id ? next : item),
+          activeDraftId: next.id,
+        }));
+        ownDraftSaves.current.set(draft.id, {
+          input: revision(draft.editRevision),
+          saved: revision(next.editRevision),
+        });
+        if (profile) await saveProfile(profile);
+        return true;
+      }
       await commit(
         (current) => {
           const previous = current.drafts.find((item) => item.id === draft.id);
@@ -328,6 +445,20 @@ export function PortalProvider({ children }) {
     }
   }
   async function saveProfile(profile) {
+    if (apiApplicant && accountProfileKey) {
+      const next = {
+        ...copy(profile),
+        _editRevision: revision(currentAccountProfile._editRevision) + 1,
+      };
+      try {
+        localStorage.setItem(accountProfileKey, JSON.stringify(next));
+      } catch {
+        setStorageWarning("Profile details could not be saved on this device.");
+        throw new Error("Profile details could not be saved on this device.");
+      }
+      setAccountProfile(next);
+      return next;
+    }
     const result = await commit(
       (current) => {
         checkProfileRevision(profile, current.profile);
@@ -373,13 +504,16 @@ export function PortalProvider({ children }) {
       throw new Error("Choose between 1 and 10 files.");
     uploading.current = true;
     setDocumentsBusy(true);
+    setDocumentsProgress({ completed: 0, total: files.length });
     try {
       const prepared = [];
       for (const file of files)
         prepared.push(await prepareDocument(file, category, expiresAt));
       const current = readCurrentState();
       const plan = documentUploadPlan(prepared, current.documents);
-      const attachedIds = plan.ids;
+      let attachedIds = plan.ids;
+      let plannedDocuments = plan.documents;
+      let savedFiles = plan.files;
       const target = current.drafts.find((draft) => draft.id === draftId);
       if (draftId && !target)
         throw new Error(
@@ -387,7 +521,21 @@ export function PortalProvider({ children }) {
         );
       if (target && new Set([...target.documentIds, ...attachedIds]).size > 10)
         throw new Error("Attach up to 10 files per application.");
-      await saveDocumentFiles(plan.files);
+      let backendRevision = target?.backendRevision;
+      if (target?.backendOwnerId === user.id) {
+        const uploaded = [];
+        for (const item of prepared) {
+          const result = await applicationsApi.uploadDocument(target.id, backendRevision, item.blob, item.metadata);
+          backendRevision = result.revision;
+          uploaded.push({ ...item.metadata, id: result.id, backendDocumentId: result.id, applicationId: target.id, name: result.name, size: result.sizeBytes, type: result.contentType, sha256: result.sha256, uploadedAt: result.uploadedAt, storage: "server" });
+          setDocumentsProgress({ completed: uploaded.length, total: files.length });
+        }
+        plannedDocuments = uploaded;
+        attachedIds = uploaded.map((item) => item.id);
+        savedFiles = uploaded.map((item, index) => ({ id: item.id, blob: prepared[index].blob }));
+      }
+      await saveDocumentFiles(savedFiles);
+      if (target?.backendOwnerId !== user.id) setDocumentsProgress({ completed: files.length, total: files.length });
       await commit((latest) => {
         const liveDraft = latest.drafts.find((draft) => draft.id === draftId);
         if (draftId && !liveDraft)
@@ -403,7 +551,7 @@ export function PortalProvider({ children }) {
           ...latest,
           documents: [
             ...latest.documents,
-            ...plan.documents.filter(
+            ...plannedDocuments.filter(
               (document) =>
                 !latest.documents.some(
                   (existing) => existing.id === document.id,
@@ -414,6 +562,7 @@ export function PortalProvider({ children }) {
             draft.id === draftId
               ? {
                   ...draft,
+                ...(backendRevision !== undefined ? { backendRevision } : {}),
                   documentIds: [
                     ...new Set([...draft.documentIds, ...attachedIds]),
                   ],
@@ -427,6 +576,7 @@ export function PortalProvider({ children }) {
     } finally {
       uploading.current = false;
       setDocumentsBusy(false);
+      setDocumentsProgress({ completed: 0, total: 0 });
     }
   }
   async function attachDocument(draftId, documentId, remove = false) {
@@ -499,6 +649,93 @@ export function PortalProvider({ children }) {
   async function submitApplication(draft, profile, confirmed) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
+    if (apiApplicant && draft.backendOwnerId === user.id) {
+      const storedDraft = readCurrentState().drafts.find(
+        (item) => item.id === draft.id && item.backendOwnerId === user.id,
+      );
+      if (!storedDraft)
+        throw new Error("This backend draft is not available in the current account.");
+      const fields = {
+        title: draft.title,
+        theme: draft.theme,
+        problem: draft.problem,
+        solution: draft.solution,
+        impact: draft.impact,
+        team: draft.team,
+      };
+      const budget = { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) };
+      let submitRevision = storedDraft.backendSubmitRevision;
+      let submission = storedDraft.backendPendingSubmission;
+      if (submitRevision !== undefined &&
+          (JSON.stringify(fields) !== JSON.stringify(storedDraft.backendSubmitFields) ||
+           JSON.stringify(budget) !== JSON.stringify(storedDraft.backendSubmitBudget))) {
+        throw new Error("A submission retry is already in progress for the previously saved answers. Reload the draft before changing it.");
+      }
+      if (submitRevision === undefined) {
+        const saved = await applicationsApi.save(draft.id, storedDraft.backendRevision, fields, budget);
+        submitRevision = saved.revision;
+        await commit((current) => ({
+          ...current,
+          drafts: current.drafts.map((item) => item.id === draft.id
+            ? { ...item, ...fields, backendRevision: submitRevision,
+                backendSubmitRevision: submitRevision, backendSubmitFields: fields,
+                backendSubmitBudget: budget }
+            : item),
+        }));
+      }
+      if (!submission) {
+        submission = await applicationsApi.submit(draft.id, submitRevision, user.id);
+        await commit((current) => ({
+          ...current,
+          drafts: current.drafts.map((item) => item.id === draft.id
+            ? { ...item, backendPendingSubmission: submission }
+            : item),
+        }));
+      }
+      const verified = await applicationsApi.readSubmission(draft.id, submission.id);
+      const now = verified.submittedAt;
+      const serverDocuments = verified.documents.map((document) => ({ ...document, applicationId: draft.id, backendDocumentId: document.id, verification: "Not verified", storage: "server" }));
+      const version = {
+        title: verified.fields.title,
+        theme: verified.fields.theme,
+        problem: verified.fields.problem,
+        solution: verified.fields.solution,
+        impact: verified.fields.impact,
+        team: verified.fields.team,
+        budgetItems: verified.budget.items,
+        fundingRequested: verified.budget.fundingRequested,
+        budgetNotApplicable: verified.budget.notApplicable,
+        documents: serverDocuments,
+        number: 1,
+      };
+      const idea = {
+        ...version,
+        id: verified.applicationId,
+        documentIds: serverDocuments.map((document) => document.id),
+        budgetItems: verified.budget.items,
+        fundingRequested: verified.budget.fundingRequested,
+        budgetNotApplicable: verified.budget.notApplicable,
+        backendOwnerId: user.id,
+        backendSubmissionId: verified.id,
+        reference: verified.reference,
+        status: "Submitted",
+        submittedAt: now,
+        updatedAt: now,
+        version: 1,
+        versions: [version],
+        feedback: [],
+        revisionRequest: null,
+        events: [{ label: "Application received", at: now }],
+      };
+      await commit((current) => ({
+        ...current,
+        ideas: [idea, ...current.ideas.filter((item) => item.id !== idea.id)],
+        drafts: current.drafts.filter((item) => item.id !== draft.id),
+        activeDraftId: null,
+      }));
+      applicationsApi.acknowledgeSubmit(draft.id, submitRevision, user.id);
+      return idea.id;
+    }
     const before = readCurrentState();
     if (!before.drafts.some((item) => item.id === draft.id))
       throw new Error(
@@ -897,28 +1134,40 @@ export function PortalProvider({ children }) {
       ),
     }));
   }
+  const visibleDrafts = data.drafts.filter((item) =>
+    item.backendOwnerId
+      ? apiApplicant && item.backendOwnerId === user.id
+      : !apiApplicant,
+  );
+  const visibleIdeas = data.ideas.filter((item) =>
+    item.backendOwnerId
+      ? apiApplicant && item.backendOwnerId === user.id
+      : !apiApplicant,
+  );
   const draft =
-    data.drafts.find((item) => item.id === data.activeDraftId) ||
-    data.drafts[0] ||
+    visibleDrafts.find((item) => item.id === data.activeDraftId) ||
+    visibleDrafts[0] ||
     blankDraft("unsaved");
   return (
     <PortalContext.Provider
       value={{
         ...data,
         profile: {
-          ...data.profile,
-          _editRevision: revision(data.profile._editRevision),
+          ...(apiApplicant ? currentAccountProfile : data.profile),
+          _editRevision: revision((apiApplicant ? currentAccountProfile : data.profile)._editRevision),
         },
-        drafts: data.drafts.map((item) => ({
+        drafts: visibleDrafts.map((item) => ({
           ...item,
           editRevision: revision(item.editRevision),
         })),
+        ideas: visibleIdeas,
         readCurrentState,
         reloadWorkspace,
         respondToReviewRequest,
         draft,
         storageWarning,
         documentsBusy,
+        documentsProgress,
         createDraft,
         saveDraft,
         saveProfile,

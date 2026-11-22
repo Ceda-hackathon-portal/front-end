@@ -27,7 +27,9 @@ export function DocumentList({ documents, onRemove, disabled = false }) {
                   ? "Expired"
                   : document.expiresAt
                     ? "Expires " + document.expiresAt
-                    : "Saved on this device"}{" "}
+                    : document.storage === "server"
+                      ? "Stored for this application"
+                      : "Saved on this device"}{" "}
                 · {document.verification || "Not verified"}
               </small>
             </div>
@@ -74,7 +76,7 @@ export default function ApplicantDocuments({
   onPendingChange,
   error: validationError = "",
 }) {
-  const { documents, drafts, uploadDocuments, attachDocument } = usePortal();
+  const { documents, drafts, uploadDocuments, attachDocument, documentsProgress } = usePortal();
   const [category, setCategory] = useState("technical-proposal");
   const [expiresAt, setExpiresAt] = useState("");
   const [error, setError] = useState("");
@@ -96,9 +98,7 @@ export default function ApplicantDocuments({
     setNotice("");
     try {
       await uploadDocuments(files, category, expiresAt, draftId);
-      setNotice(
-        "Files saved. You can reopen and download them from this device.",
-      );
+      setNotice("Files saved. You can reopen and download them from this application.");
       onChanged?.();
     } catch (failure) {
       setError(failure.message);
@@ -193,7 +193,9 @@ export default function ApplicantDocuments({
       </label>
       {busy && (
         <p role="status" className="ap-inline-note">
-          Checking file type and saving the file contents. Keep this page open.
+          {documentsProgress.total
+            ? `Uploaded ${documentsProgress.completed} of ${documentsProgress.total} files. Keep this page open.`
+            : "Checking file type and saving the file contents. Keep this page open."}
         </p>
       )}
       {error && (
@@ -246,8 +248,8 @@ export default function ApplicantDocuments({
         </details>
       )}
       <p className="ap-document-boundary">
-        Saved on this device. Virus scanning and CEDA verification require the
-        document service. Make sure all document text is readable.
+        Documents are stored privately for this application. They have not been
+        virus scanned or verified by CEDA. Make sure all document text is readable.
       </p>
     </div>
   );
