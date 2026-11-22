@@ -126,6 +126,18 @@ test('quota failures retain saved data and never acknowledge an unsaved revision
   assert.equal(store.getWarning(), '');
 });
 
+test('server-confirmed data remains visible in memory when browser storage cannot be written', async () => {
+  const env = environment();
+  const store = env.create();
+  await store.update(current => ({ ...current, applications: ['server-confirmed'] }));
+  const persisted = env.serialized();
+  env.quota(true);
+  store.updateMemory(current => ({ ...current, applications: ['server-confirmed', 'new-server-confirmed'] }));
+  assert.equal(env.serialized(), persisted);
+  assert.deepEqual(store.read().applications, ['server-confirmed', 'new-server-confirmed']);
+  assert.match(store.getWarning(), /server confirmed/);
+});
+
 test('a profile save requested between a review final check and its storage write cannot erase the review', async () => {
   const env = environment();
   const applicant = env.create();

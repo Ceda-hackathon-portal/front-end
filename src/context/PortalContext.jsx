@@ -17,6 +17,7 @@ import {
 
 import { applicationReference } from "../utils/applicant";
 import { applicationsApi } from "../services/applicationApi";
+import { restoreRemoteApplications } from "../utils/applicationPersistence.js";
 
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -193,43 +194,46 @@ export function PortalProvider({ children }) {
   const uploading = useRef(false);
   const ownDraftSaves = useRef(new Map());
   const ownProfileSave = useRef(null);
-  const hydratedApplications = useRef(new Set());
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [applicationsError, setApplicationsError] = useState("");
+  const applicationsRequest = useRef(0);
   const [documentsBusy, setDocumentsBusy] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 0 });
   const [storageWarning, setStorageWarning] = useState(store.getWarning);
   const [accountProfile, setAccountProfile] = useState(emptyProfile);
   const [accountProfileOwnerId, setAccountProfileOwnerId] = useState(null);
   const apiApplicant = Boolean(user && !user.demo);
+  async function refreshApplications() {
+    if (!apiApplicant || !user?.id) return false;
+    const requestId = ++applicationsRequest.current;
+    setApplicationsLoading(true);
+    setApplicationsError("");
+    try {
+      const records = await applicationsApi.list();
+      if (requestId !== applicationsRequest.current) return false;
+      const change = (current) => restoreRemoteApplications(current, user.id, records);
+      try {
+        await commit(change);
+      } catch {
+        store.updateMemory(change, "Applications were restored from CEDA; browser storage is unavailable.");
+      }
+      return true;
+    } catch (error) {
+      if (requestId === applicationsRequest.current)
+        setApplicationsError(error.message || "Applications could not be loaded from CEDA.");
+      return false;
+    } finally {
+      if (requestId === applicationsRequest.current) setApplicationsLoading(false);
+    }
+  }
   useEffect(() => {
-    if (!apiApplicant || !user?.id || hydratedApplications.current.has(user.id)) return;
-    hydratedApplications.current.add(user.id);
-    const pending = readCurrentState().drafts.filter((draft) => draft.backendOwnerId === user.id);
-    Promise.all(pending.map(async (draft) => {
-      const remote = await applicationsApi.read(draft.id);
-      return { id: draft.id, remote };
-    })).then((records) => commit((current) => {
-      const remoteDocuments = records.flatMap(({ id, remote }) => remote.documents.map((document) => ({
-        ...document, applicationId: id, backendDocumentId: document.id,
-        verification: "Not verified", storage: "server",
-      })));
-      return {
-        ...current,
-        documents: [...current.documents.filter((document) => !document.backendDocumentId), ...remoteDocuments],
-        drafts: current.drafts.map((draft) => {
-          const record = records.find((item) => item.id === draft.id);
-          if (!record) return draft;
-          return {
-            ...draft, ...record.remote.fields, backendRevision: record.remote.revision,
-            budgetItems: record.remote.budget.items,
-            fundingRequested: record.remote.budget.fundingRequested,
-            budgetNotApplicable: record.remote.budget.notApplicable,
-            documentIds: record.remote.documents.map((document) => document.id),
-          };
-        }),
-      };
-    })).catch(() => {
-      hydratedApplications.current.delete(user.id);
-    });
+    if (!apiApplicant || !user?.id) {
+      applicationsRequest.current += 1;
+      setApplicationsLoading(false);
+      setApplicationsError("");
+      return;
+    }
+    void refreshApplications();
   }, [apiApplicant, user?.id]);
   const accountProfileKey = user?.id
     ? `ceda.api.profile.v1.${user.id}`
@@ -294,6 +298,13 @@ export function PortalProvider({ children }) {
       throw error;
     }
   }
+  async function commitRemote(change) {
+    try {
+      return await commit(change);
+    } catch {
+      return store.updateMemory(change, "CEDA confirmed the save; this browser could not save a local copy.");
+    }
+  }
   function checkDraftRevision(draft, current) {
     const input = revision(draft.editRevision);
     const expected = expectedRevision(
@@ -344,7 +355,7 @@ export function PortalProvider({ children }) {
         backendRevision: application.revision,
         ...application.fields,
       };
-      await commit((current) => ({
+      await commitRemote((current) => ({
         ...current,
         drafts: [draft, ...current.drafts.filter((item) => item.id !== draft.id)],
         activeDraftId: draft.id,
@@ -367,14 +378,20 @@ export function PortalProvider({ children }) {
         if (!previous || previous.backendOwnerId !== user.id)
           throw new Error("This backend draft is not available in the current account.");
         checkDraftRevision(draft, previous);
-        const saved = await applicationsApi.save(draft.id, previous.backendRevision, {
+        const fields = {
           title: draft.title,
           theme: draft.theme,
           problem: draft.problem,
           solution: draft.solution,
           impact: draft.impact,
           team: draft.team,
-        }, { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) });
+        };
+        const budget = { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) };
+        const saved = await applicationsApi.withMutation(draft.id, () => {
+          const live = readCurrentState().drafts.find((item) => item.id === draft.id);
+          if (!live || live.backendOwnerId !== user.id) throw new Error("This backend draft is not available in the current account.");
+          return applicationsApi.save(draft.id, live.backendRevision, fields, budget);
+        });
         const next = {
           ...previous,
           ...draft,
@@ -382,7 +399,7 @@ export function PortalProvider({ children }) {
           editRevision: revision(previous.editRevision) + 1,
           updatedAt: new Date().toISOString(),
         };
-        await commit((latest) => ({
+        await commitRemote((latest) => ({
           ...latest,
           drafts: latest.drafts.map((item) => item.id === draft.id ? next : item),
           activeDraftId: next.id,
@@ -440,8 +457,11 @@ export function PortalProvider({ children }) {
       );
       return true;
     } catch (error) {
-      setStorageWarning(error.message);
-      return false;
+      const message = error.status === 409
+        ? "Revision conflict: the server has a newer application version. Your edits remain open; reload the latest draft before retrying."
+        : error.message || "The draft could not be saved. Your edits remain open.";
+      setStorageWarning(message);
+      return { ok: false, conflict: error.status === 409, message };
     }
   }
   async function saveProfile(profile) {
@@ -524,19 +544,31 @@ export function PortalProvider({ children }) {
       let backendRevision = target?.backendRevision;
       if (target?.backendOwnerId === user.id) {
         const uploaded = [];
-        for (const item of prepared) {
-          const result = await applicationsApi.uploadDocument(target.id, backendRevision, item.blob, item.metadata);
-          backendRevision = result.revision;
-          uploaded.push({ ...item.metadata, id: result.id, backendDocumentId: result.id, applicationId: target.id, name: result.name, size: result.sizeBytes, type: result.contentType, sha256: result.sha256, uploadedAt: result.uploadedAt, storage: "server" });
-          setDocumentsProgress({ completed: uploaded.length, total: files.length });
-        }
+        await applicationsApi.withMutation(target.id, async () => {
+          for (const item of prepared) {
+            const live = readCurrentState().drafts.find((draft) => draft.id === target.id);
+            if (!live || live.backendOwnerId !== user.id) throw new Error("This backend draft is not available in the current account.");
+            const result = await applicationsApi.uploadDocument(target.id, live.backendRevision, item.blob, item.metadata);
+            backendRevision = result.revision;
+            const document = { ...item.metadata, id: result.id, backendDocumentId: result.id, applicationId: target.id, backendOwnerId: user.id, name: result.name, size: result.sizeBytes, type: result.contentType, sha256: result.sha256, uploadedAt: result.uploadedAt, storage: "server" };
+            uploaded.push(document);
+            await commitRemote((latest) => ({
+              ...latest,
+              documents: [...latest.documents.filter((existing) => existing.id !== document.id), document],
+              drafts: latest.drafts.map((draft) => draft.id === target.id ? { ...draft, backendRevision, documentIds: [...new Set([...draft.documentIds, document.id])] } : draft),
+            }));
+            setDocumentsProgress({ completed: uploaded.length, total: files.length });
+          }
+        });
         plannedDocuments = uploaded;
         attachedIds = uploaded.map((item) => item.id);
-        savedFiles = uploaded.map((item, index) => ({ id: item.id, blob: prepared[index].blob }));
+        // Server documents are downloaded through the authenticated API; don't
+        // make a confirmed upload depend on a second browser-storage write.
+        savedFiles = [];
       }
-      await saveDocumentFiles(savedFiles);
+      if (savedFiles.length) await saveDocumentFiles(savedFiles);
       if (target?.backendOwnerId !== user.id) setDocumentsProgress({ completed: files.length, total: files.length });
-      await commit((latest) => {
+      await commitRemote((latest) => {
         const liveDraft = latest.drafts.find((draft) => draft.id === draftId);
         if (draftId && !liveDraft)
           throw new Error(
@@ -672,9 +704,13 @@ export function PortalProvider({ children }) {
         throw new Error("A submission retry is already in progress for the previously saved answers. Reload the draft before changing it.");
       }
       if (submitRevision === undefined) {
-        const saved = await applicationsApi.save(draft.id, storedDraft.backendRevision, fields, budget);
+        const saved = await applicationsApi.withMutation(draft.id, () => {
+          const live = readCurrentState().drafts.find((item) => item.id === draft.id && item.backendOwnerId === user.id);
+          if (!live) throw new Error("This backend draft is not available in the current account.");
+          return applicationsApi.save(draft.id, live.backendRevision, fields, budget);
+        });
         submitRevision = saved.revision;
-        await commit((current) => ({
+        await commitRemote((current) => ({
           ...current,
           drafts: current.drafts.map((item) => item.id === draft.id
             ? { ...item, ...fields, backendRevision: submitRevision,
@@ -684,8 +720,8 @@ export function PortalProvider({ children }) {
         }));
       }
       if (!submission) {
-        submission = await applicationsApi.submit(draft.id, submitRevision, user.id);
-        await commit((current) => ({
+        submission = await applicationsApi.withMutation(draft.id, () => applicationsApi.submit(draft.id, submitRevision, user.id));
+        await commitRemote((current) => ({
           ...current,
           drafts: current.drafts.map((item) => item.id === draft.id
             ? { ...item, backendPendingSubmission: submission }
@@ -727,7 +763,7 @@ export function PortalProvider({ children }) {
         revisionRequest: null,
         events: [{ label: "Application received", at: now }],
       };
-      await commit((current) => ({
+      await commitRemote((current) => ({
         ...current,
         ideas: [idea, ...current.ideas.filter((item) => item.id !== idea.id)],
         drafts: current.drafts.filter((item) => item.id !== draft.id),
@@ -1144,6 +1180,11 @@ export function PortalProvider({ children }) {
       ? apiApplicant && item.backendOwnerId === user.id
       : !apiApplicant,
   );
+  const visibleDocuments = data.documents.filter((item) =>
+    apiApplicant
+      ? item.backendOwnerId === user.id
+      : !item.backendOwnerId,
+  );
   const draft =
     visibleDrafts.find((item) => item.id === data.activeDraftId) ||
     visibleDrafts[0] ||
@@ -1161,11 +1202,15 @@ export function PortalProvider({ children }) {
           editRevision: revision(item.editRevision),
         })),
         ideas: visibleIdeas,
+        documents: visibleDocuments,
         readCurrentState,
         reloadWorkspace,
         respondToReviewRequest,
         draft,
         storageWarning,
+        applicationsLoading,
+        applicationsError,
+        refreshApplications,
         documentsBusy,
         documentsProgress,
         createDraft,
