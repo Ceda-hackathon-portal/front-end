@@ -16,6 +16,7 @@ The end-to-end command builds the frontend, starts a separate preview server on 
 
 | Journey | Evidence checked |
 | --- | --- |
+| Homepage slideshow | Desktop/mobile slides use web-sized photographs with no previous static hero underneath; manual controls, autoplay hover/focus pause, reduced motion, image-load failure and scroll shape are checked. |
 | Selected application | Real form submission and file upload; already-open leader/officer/management tabs update; assigned reviewers see the record; independent reviewers submit concurrently; programme progress and counts update; an authorised outcome reaches the applicant. |
 | Correction and non-selection | A dated correction appears on the applicant's current page; the response creates a new version and resets screening; staff see the new evidence; non-selection reaches the applicant; review grounds and support-contact consent reach authorised staff; the staff response returns to the applicant. |
 | Stale applicant draft | An old tab cannot replace newer saved answers or remove the uploaded file. Reopen saved draft loads the latest record without signing out. |
@@ -42,3 +43,15 @@ The initial live-tabs reproduction on 21 November 2026 saved an applicant submis
 ## Verified boundary
 
 These checks cover the current browser-local frontend and its supplied 2026 sample intake. Role tabs share one origin and browser storage. Every metadata write uses the same Web Lock; browsers without safe shared-write support retain their data and report that saving is unavailable. Real accounts, separate devices, server-side permissions, central file scanning, authoritative audit records and email/SMS delivery still require the backend. Browser storage and browser locks do not replace those services.
+
+## Responsive image assets
+
+All 26 tracked JPEG/PNG photographs and illustrations have WebP copies in `public/images/optimized/` at 960 px and 1920 px maximum width, quality 76. Full aspect ratio and orientation are retained. The small 9 KB CEDA logo stays in its original format to keep lettering crisp. Original photos and the unrelated local image remain untouched.
+
+The source set totals 34,457,941 bytes. The 960 px set totals 1,166,494 bytes and the 1920 px set totals 3,295,424 bytes. These are whole-library totals; pages load only their own images. Actual transfer depends on viewport size and pixel density. `docs/image-sizes.json` lists each file. To regenerate, install Pillow in a development Python environment and run `python scripts/optimize_images.py`.
+
+`OptimizedImage` supplies responsive candidates and asynchronous decoding. Below-fold images are lazy-loaded; visible applicant/staff heroes and the first homepage slide receive priority. The decorative login image is lazy-loaded so it is not requested when hidden on narrow screens. The hero has a flat loading background instead of the previous `ceda-hero1.png`. Its existing scroll shape updates at most once per frame and skips unchanged progress; reduced motion disables that animation.
+
+Run `npm run build` followed by `npx playwright test tests/e2e/home-hero.spec.js` for slideshow regressions. Desktop/mobile layout checks cover the split drone section, grey brand ribbon, black footer, feedback file download, no horizontal overflow and applicant/staff image loading. A performance measurement is not a guarantee of a particular device's frame rate.
+
+The grey strip currently uses CEDA's own mark and motto. Sponsor identities have not been supplied, so it does not claim external sponsorship. The feedback form prepares a downloadable text file; it does not claim to deliver feedback to an inbox.
