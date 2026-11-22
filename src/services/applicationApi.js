@@ -1,0 +1,81 @@
+import { apiRequest } from "./apiClient";
+
+const dataOf = (response) => response?.data ?? response;
+const pendingSubmitKeys = new Map();
+const submitKeyName = (userId, applicationId, revision) =>
+  `ceda.submit.v1.${userId}.${applicationId}.${revision}`;
+
+function submissionKey(userId, applicationId, revision) {
+  const storageKey = submitKeyName(userId, applicationId, revision);
+  const pending = pendingSubmitKeys.get(storageKey);
+  if (pending) return { key: pending, storageKey };
+  try {
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) return { key: existing, storageKey };
+  } catch {
+    // In-memory fallback still keeps one key for retries in this page session.
+  }
+  const key = crypto.randomUUID();
+  pendingSubmitKeys.set(storageKey, key);
+  try {
+    window.sessionStorage.setItem(storageKey, key);
+  } catch {
+    // The returned command carries this key so the caller can retain it on retry.
+  }
+  return { key, storageKey };
+}
+
+export const applicationsApi = {
+  async create({ programmeId, programmeVersionId }) {
+    return dataOf(await apiRequest("/applications", {
+      method: "POST",
+      body: { programmeId, programmeVersionId },
+    }));
+  },
+
+  async read(applicationId) {
+    return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}`));
+  },
+
+  async save(applicationId, expectedRevision, fields) {
+    return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}`, {
+      method: "PATCH",
+      body: { expectedRevision, fields },
+    }));
+  },
+
+  async submit(applicationId, expectedRevision, authenticatedUserId) {
+    const command = submissionKey(authenticatedUserId, applicationId, expectedRevision);
+    return dataOf(await apiRequest(`/applications/${encodeURIComponent(applicationId)}/submit`, {
+      method: "POST",
+      body: { expectedRevision },
+      idempotencyKey: command.key,
+    }));
+  },
+
+  acknowledgeSubmit(applicationId, expectedRevision, authenticatedUserId) {
+    const storageKey = submitKeyName(authenticatedUserId, applicationId, expectedRevision);
+    try {
+      window.sessionStorage.removeItem(storageKey);
+    } catch {
+      // The server accepted the command; stale local command keys are harmless.
+    }
+    pendingSubmitKeys.delete(storageKey);
+  },
+
+  async readSubmission(applicationId, submissionVersionId) {
+    return dataOf(await apiRequest(
+      `/applications/${encodeURIComponent(applicationId)}/submissions/${encodeURIComponent(submissionVersionId)}`,
+    ));
+  },
+};
+
+// This is the only staff read route available to the frontend. The server still
+// checks session, assignment and conflict state; this client does not grant roles.
+export const officerApi = {
+  async readSubmission(submissionVersionId) {
+    return dataOf(await apiRequest(
+      `/officer/submissions/${encodeURIComponent(submissionVersionId)}`,
+    ));
+  },
+};

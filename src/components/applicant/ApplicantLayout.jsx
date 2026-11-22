@@ -47,6 +47,7 @@ export default function ApplicantLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [authNotice, setAuthNotice] = useState('')
   const isApplicant = user?.role === 'submitter'
   const messageCount = isApplicant ? messages.filter(message => !message.readAt).length : 0
   const dataLight = isApplicant && profile.preferences?.dataLight
@@ -108,7 +109,16 @@ export default function ApplicantLayout() {
                   <div className="ap-account-menu">
                     <span>{profile.fullName || 'Applicant account'}</span>
                     <Link className="ap-profile-menu-link" to="/workspace/profile"><UserRound size={15} />My profile and documents</Link>
-                    <button onClick={() => { logout(); navigate('/portal') }}><LogOut size={16} />Sign out</button>
+                    <button onClick={async () => {
+                      setAuthNotice('')
+                      try {
+                        await logout()
+                        navigate('/portal')
+                      } catch {
+                        setAuthNotice('Sign out could not be confirmed. Check your connection and try again.')
+                      }
+                    }}><LogOut size={16} />Sign out</button>
+                    {authNotice && <p role="alert">{authNotice}</p>}
                   </div>
                 </details>
               ) : user ? (

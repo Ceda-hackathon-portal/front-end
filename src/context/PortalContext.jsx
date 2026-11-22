@@ -16,6 +16,7 @@ import {
 } from "../services/applicantDocuments";
 
 import { applicationReference } from "../utils/applicant";
+import { applicationsApi } from "../services/applicationApi";
 
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -177,7 +178,7 @@ function initialState() {
   }
 }
 export function PortalProvider({ children }) {
-  const { staffUser } = useAuth();
+  const { user, staffUser } = useAuth();
   const admin = useAdmin();
   const [initial] = useState(initialState);
   const [store] = useState(() =>
@@ -194,6 +195,33 @@ export function PortalProvider({ children }) {
   const ownProfileSave = useRef(null);
   const [documentsBusy, setDocumentsBusy] = useState(false);
   const [storageWarning, setStorageWarning] = useState(store.getWarning);
+  const [accountProfile, setAccountProfile] = useState(emptyProfile);
+  const [accountProfileOwnerId, setAccountProfileOwnerId] = useState(null);
+  const apiApplicant = Boolean(user && !user.demo);
+  const accountProfileKey = user?.id
+    ? `ceda.api.profile.v1.${user.id}`
+    : null;
+  useEffect(() => {
+    if (!apiApplicant || !accountProfileKey) {
+      setAccountProfile(copy(emptyProfile));
+      setAccountProfileOwnerId(null);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(accountProfileKey);
+      setAccountProfile({
+        ...copy(emptyProfile),
+        ...(stored ? JSON.parse(stored) : {}),
+      });
+    } catch {
+      setAccountProfile(copy(emptyProfile));
+    }
+    setAccountProfileOwnerId(user.id);
+  }, [apiApplicant, accountProfileKey]);
+  const currentAccountProfile =
+    apiApplicant && accountProfileOwnerId === user.id
+      ? accountProfile
+      : emptyProfile;
   useEffect(
     () =>
       store.subscribe((next, warning) => {
@@ -267,6 +295,26 @@ export function PortalProvider({ children }) {
   async function createDraft(theme = "") {
     if (theme && !themes.some((item) => item.id === theme))
       throw new Error("Choose an available theme.");
+    if (apiApplicant) {
+      const programmeId = import.meta.env.VITE_CEDA_PROGRAMME_ID;
+      const programmeVersionId = import.meta.env.VITE_CEDA_PROGRAMME_VERSION_ID;
+      if (!programmeId || !programmeVersionId)
+        throw new Error("The backend has no published programme configured for local applications.");
+      const application = await applicationsApi.create({ programmeId, programmeVersionId });
+      const draft = {
+        ...blankDraft(application.id, application.fields.theme || theme),
+        programmeId: application.programmeId,
+        backendOwnerId: user.id,
+        backendRevision: application.revision,
+        ...application.fields,
+      };
+      await commit((current) => ({
+        ...current,
+        drafts: [draft, ...current.drafts.filter((item) => item.id !== draft.id)],
+        activeDraftId: draft.id,
+      }));
+      return draft.id;
+    }
     const draft = blankDraft(crypto.randomUUID(), theme);
     await commit((current) => ({
       ...current,
@@ -277,6 +325,39 @@ export function PortalProvider({ children }) {
   }
   async function saveDraft(draft, profile) {
     try {
+      if (apiApplicant && draft.backendOwnerId === user.id) {
+        const current = readCurrentState();
+        const previous = current.drafts.find((item) => item.id === draft.id);
+        if (!previous || previous.backendOwnerId !== user.id)
+          throw new Error("This backend draft is not available in the current account.");
+        checkDraftRevision(draft, previous);
+        const saved = await applicationsApi.save(draft.id, previous.backendRevision, {
+          title: draft.title,
+          theme: draft.theme,
+          problem: draft.problem,
+          solution: draft.solution,
+          impact: draft.impact,
+          team: draft.team,
+        });
+        const next = {
+          ...previous,
+          ...draft,
+          backendRevision: saved.revision,
+          editRevision: revision(previous.editRevision) + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        await commit((latest) => ({
+          ...latest,
+          drafts: latest.drafts.map((item) => item.id === draft.id ? next : item),
+          activeDraftId: next.id,
+        }));
+        ownDraftSaves.current.set(draft.id, {
+          input: revision(draft.editRevision),
+          saved: revision(next.editRevision),
+        });
+        if (profile) await saveProfile(profile);
+        return true;
+      }
       await commit(
         (current) => {
           const previous = current.drafts.find((item) => item.id === draft.id);
@@ -328,6 +409,20 @@ export function PortalProvider({ children }) {
     }
   }
   async function saveProfile(profile) {
+    if (apiApplicant && accountProfileKey) {
+      const next = {
+        ...copy(profile),
+        _editRevision: revision(currentAccountProfile._editRevision) + 1,
+      };
+      try {
+        localStorage.setItem(accountProfileKey, JSON.stringify(next));
+      } catch {
+        setStorageWarning("Profile details could not be saved on this device.");
+        throw new Error("Profile details could not be saved on this device.");
+      }
+      setAccountProfile(next);
+      return next;
+    }
     const result = await commit(
       (current) => {
         checkProfileRevision(profile, current.profile);
@@ -499,6 +594,83 @@ export function PortalProvider({ children }) {
   async function submitApplication(draft, profile, confirmed) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
+    if (apiApplicant && draft.backendOwnerId === user.id) {
+      if (draft.documentIds.length || draft.budgetItems.some((item) => item.amount || item.description))
+        throw new Error("The backend currently accepts the six application answers only. Documents and budget details cannot be submitted yet; your saved draft is unchanged.");
+      const storedDraft = readCurrentState().drafts.find(
+        (item) => item.id === draft.id && item.backendOwnerId === user.id,
+      );
+      if (!storedDraft)
+        throw new Error("This backend draft is not available in the current account.");
+      const fields = {
+        title: draft.title,
+        theme: draft.theme,
+        problem: draft.problem,
+        solution: draft.solution,
+        impact: draft.impact,
+        team: draft.team,
+      };
+      let submitRevision = storedDraft.backendSubmitRevision;
+      let submission = storedDraft.backendPendingSubmission;
+      if (submitRevision !== undefined &&
+          JSON.stringify(fields) !== JSON.stringify(storedDraft.backendSubmitFields)) {
+        throw new Error("A submission retry is already in progress for the previously saved answers. Reload the draft before changing it.");
+      }
+      if (submitRevision === undefined) {
+        const saved = await applicationsApi.save(draft.id, storedDraft.backendRevision, fields);
+        submitRevision = saved.revision;
+        await commit((current) => ({
+          ...current,
+          drafts: current.drafts.map((item) => item.id === draft.id
+            ? { ...item, ...fields, backendRevision: submitRevision,
+                backendSubmitRevision: submitRevision, backendSubmitFields: fields }
+            : item),
+        }));
+      }
+      if (!submission) {
+        submission = await applicationsApi.submit(draft.id, submitRevision, user.id);
+        await commit((current) => ({
+          ...current,
+          drafts: current.drafts.map((item) => item.id === draft.id
+            ? { ...item, backendPendingSubmission: submission }
+            : item),
+        }));
+      }
+      const verified = await applicationsApi.readSubmission(draft.id, submission.id);
+      const now = verified.submittedAt;
+      const version = {
+        title: verified.fields.title,
+        theme: verified.fields.theme,
+        problem: verified.fields.problem,
+        solution: verified.fields.solution,
+        impact: verified.fields.impact,
+        team: verified.fields.team,
+        number: 1,
+      };
+      const idea = {
+        ...version,
+        id: verified.applicationId,
+        backendOwnerId: user.id,
+        backendSubmissionId: verified.id,
+        reference: verified.reference,
+        status: "Submitted",
+        submittedAt: now,
+        updatedAt: now,
+        version: 1,
+        versions: [version],
+        feedback: [],
+        revisionRequest: null,
+        events: [{ label: "Application received", at: now }],
+      };
+      await commit((current) => ({
+        ...current,
+        ideas: [idea, ...current.ideas.filter((item) => item.id !== idea.id)],
+        drafts: current.drafts.filter((item) => item.id !== draft.id),
+        activeDraftId: null,
+      }));
+      applicationsApi.acknowledgeSubmit(draft.id, submitRevision, user.id);
+      return idea.id;
+    }
     const before = readCurrentState();
     if (!before.drafts.some((item) => item.id === draft.id))
       throw new Error(
@@ -897,22 +1069,33 @@ export function PortalProvider({ children }) {
       ),
     }));
   }
+  const visibleDrafts = data.drafts.filter((item) =>
+    item.backendOwnerId
+      ? apiApplicant && item.backendOwnerId === user.id
+      : !apiApplicant,
+  );
+  const visibleIdeas = data.ideas.filter((item) =>
+    item.backendOwnerId
+      ? apiApplicant && item.backendOwnerId === user.id
+      : !apiApplicant,
+  );
   const draft =
-    data.drafts.find((item) => item.id === data.activeDraftId) ||
-    data.drafts[0] ||
+    visibleDrafts.find((item) => item.id === data.activeDraftId) ||
+    visibleDrafts[0] ||
     blankDraft("unsaved");
   return (
     <PortalContext.Provider
       value={{
         ...data,
         profile: {
-          ...data.profile,
-          _editRevision: revision(data.profile._editRevision),
+          ...(apiApplicant ? currentAccountProfile : data.profile),
+          _editRevision: revision((apiApplicant ? currentAccountProfile : data.profile)._editRevision),
         },
-        drafts: data.drafts.map((item) => ({
+        drafts: visibleDrafts.map((item) => ({
           ...item,
           editRevision: revision(item.editRevision),
         })),
+        ideas: visibleIdeas,
         readCurrentState,
         reloadWorkspace,
         respondToReviewRequest,

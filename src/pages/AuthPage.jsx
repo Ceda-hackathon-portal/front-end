@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { roles } from "../data/portal";
 import { currentManager, otherManager, evaluators } from "../data/admin";
 import { safeReturnPath } from "../utils/portal";
+import { authApi } from "../services/apiClient";
 import "../styles/auth.css";
 
 // Two separate entry points: /login (with /register and /forgot-password) for applicants, /staff for CEDA staff.
@@ -17,6 +18,7 @@ export default function AuthPage({ mode }) {
   const [selectedRole, setSelectedRole] = useState("administrator");
   const [reviewerId, setReviewerId] = useState("e_01");
   const [managerId, setManagerId] = useState("u_pm_demo");
+  const [signingIn, setSigningIn] = useState(false);
   const { startDemo, logout, staffUser } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -38,13 +40,25 @@ export default function AuthPage({ mode }) {
 
   function submit(event) {
     event.preventDefault();
-    setMessage(
-      resetting
-        ? "Reset email is not connected yet."
-        : staff
-          ? "Staff sign-in is not connected yet. Use demo access below."
-          : "Account services are not connected. Use demo access below.",
-    );
+    setMessage(staff
+      ? "Staff access is not enabled for OIDC sessions yet. Use demo access below."
+      : "Use CEDA secure sign in below. Account creation and password recovery are provided by the identity service.");
+  }
+
+  async function beginOidcSignIn() {
+    setSigningIn(true);
+    setMessage("");
+    try {
+      const result = await authApi.login();
+      const destination = new URL(result.authorizationUrl);
+      if (destination.protocol !== "https:") throw new Error("Invalid sign-in destination");
+      window.location.assign(destination.href);
+    } catch (error) {
+      setMessage([404, 503].includes(error?.status)
+        ? "Backend sign in is disabled or the OIDC provider is not configured. Ask the administrator to configure the approved identity provider."
+        : error?.message || "Secure sign in is unavailable. Please try again.");
+      setSigningIn(false);
+    }
   }
 
   function openDemo(role) {
@@ -73,7 +87,7 @@ export default function AuthPage({ mode }) {
                 <Link to="/login">applicant page</Link>.
               </p>
             )}
-            <form onSubmit={submit}>
+            {staff ? <form onSubmit={submit}>
               {registering && (
                 <label>
                   Full name
@@ -136,7 +150,20 @@ export default function AuthPage({ mode }) {
                 {staff ? "Sign in" : title}
                 <ArrowRight size={17} />
               </button>
-            </form>
+            </form> : (
+              <div>
+                {(registering || resetting) && (
+                  <p className="auth-entry-intro">
+                    Account registration and password recovery are handled by CEDA’s secure identity service.
+                  </p>
+                )}
+                {message && <p className="auth-entry-notice" role="status">{message}</p>}
+                <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn}>
+                  {signingIn ? "Connecting…" : "Continue with secure sign in"}
+                  <ArrowRight size={17} />
+                </button>
+              </div>
+            )}
             {staff ? (
               <p className="auth-entry-alternate">
                 No staff account? Ask the platform administrator.
