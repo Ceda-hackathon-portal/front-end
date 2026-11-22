@@ -1,3 +1,4 @@
+import OptimizedImage from "../components/shared/OptimizedImage";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -191,8 +192,8 @@ export default function DashboardPage() {
         </section>
         <Link className="ap-programme-photo" to="/portal/programmes">
           {!profile.preferences?.dataLight && (
-            <img
-              src="/images/applicant-programmes.png"
+            <OptimizedImage
+              name="applicant-programmes.png" sizes="(max-width: 760px) 100vw, 40vw"
               alt="A cattle enterprise"
               width="1916"
               height="821"
