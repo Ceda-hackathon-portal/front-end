@@ -23,7 +23,7 @@ export default function VisionQuote() {
 
       <style>{`
         .vq {
-          background: radial-gradient(circle at 50% 0%, #14305a 0%, #0B1F3A 62%);
+          background: radial-gradient(circle at 50% 0%, #37302a 0%, #201c18 62%);
           color: #ffffff;
           font-family: 'Poppins', sans-serif;
           padding: 110px 24px;
@@ -36,7 +36,7 @@ export default function VisionQuote() {
           font-weight: 500;
           letter-spacing: .22em;
           text-transform: uppercase;
-          color: #9db8e0;
+          color: #b6a38c;
         }
         .vq-mark {
           display: block;
@@ -44,7 +44,7 @@ export default function VisionQuote() {
           line-height: .8;
           height: 56px;
           margin-top: 28px;
-          color: #3A6EC4;
+          color: #a38a6e;
           font-weight: 700;
         }
         .vq-quote { margin: 0; }
@@ -62,29 +62,29 @@ export default function VisionQuote() {
           font-size: 17px;
           font-weight: 300;
           line-height: 1.75;
-          color: #d6e4f7;
+          color: #d8cfc3;
         }
         .vq-source {
           margin: 28px 0 0;
           font-size: 14px;
           font-weight: 300;
-          color: #b6c8e6;
+          color: #b7ab9b;
         }
         .vq-source a { color: #ffffff; text-decoration: underline; text-underline-offset: 3px; }
-        .vq-source a:hover { color: #D6E4F7; }
+        .vq-source a:hover { color: #e5d9c9; }
         .vq-button {
           display: inline-block;
           margin-top: 38px;
           padding: 14px 30px;
           border-radius: 999px;
           background: #ffffff;
-          color: #0B1F3A;
+          color: #201c18;
           font-size: 15px;
           font-weight: 600;
           text-decoration: none;
           transition: transform .2s ease, background .2s ease;
         }
-        .vq-button:hover { background: #D6E4F7; transform: translateY(-2px); }
+        .vq-button:hover { background: #e5d9c9; transform: translateY(-2px); }
         .vq-button:focus-visible, .vq-source a:focus-visible { outline: 3px solid #ffffff; outline-offset: 4px; }
         @media (max-width: 640px) {
           .vq { padding: 72px 20px; }
