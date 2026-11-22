@@ -21,3 +21,5 @@ The staff homepage (`/admin`) now reuses `public/images/Carousel2.jpg`, the seco
 | `staff-assignments.jpg` | Reviewer assignments; empty organised workstation | Michael Soledad | [Home office desk with leather chair](https://unsplash.com/photos/home-office-desk-with-leather-chair-9juYjd6iQLU) | Unsplash License |
 
 Licence sources checked: [Unsplash License](https://unsplash.com/license) and [Pexels License](https://www.pexels.com/license/). Both permit free commercial use and adaptation; attribution is recorded here voluntarily. These are website illustrations, not standalone stock-image resale.
+
+Responsive delivery now uses compressed WebP copies of these same assets via `OptimizedImage`. Originals are retained. See `END_TO_END_TESTS.md` and `image-sizes.json` for generation settings and sizes.
