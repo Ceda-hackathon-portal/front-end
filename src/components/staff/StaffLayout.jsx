@@ -1,3 +1,4 @@
+import OptimizedImage from "../shared/OptimizedImage";
 import {
   Link,
   NavLink,
@@ -185,9 +186,10 @@ export default function StaffLayout() {
       </aside>
       <div className="st-stage">
         <div className="st-hero">
-          <img
+          <OptimizedImage
             className="st-hero-image"
-            src={"/images/" + hero.image}
+            name={hero.image}
+            loading="eager"
             style={hero.position ? { objectPosition: hero.position } : undefined}
             alt=""
             fetchPriority="high"
