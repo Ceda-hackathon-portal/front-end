@@ -90,6 +90,17 @@ export function AuthProvider({ children }) {
   async function signInLocal(email, password) {
     if (!localAuthEnabled) throw new Error("Local password sign in is not enabled for this deployment.");
     const result = await authApi.localLogin(email, password);
+    return adoptSession(result);
+  }
+
+  // Confirms the emailed code; the server creates the applicant account and signs it in.
+  async function completeRegistration(verificationId, code) {
+    if (!localAuthEnabled) throw new Error("Account creation is not enabled for this deployment.");
+    const result = await authApi.verifyRegistration(verificationId, code);
+    return adoptSession(result);
+  }
+
+  async function adoptSession(result) {
     const session = result?.user ? result : await authApi.session();
     if (!session?.user?.id) throw new Error("The server did not return an authenticated session.");
     const staffRole = await staffRoleOf();
@@ -146,6 +157,7 @@ export function AuthProvider({ children }) {
         isLoggedIn: Boolean(user),
         startDemo,
         signInLocal,
+        completeRegistration,
         localAuthEnabled,
         logout,
         authLoading,

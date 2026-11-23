@@ -25,7 +25,9 @@ export default function AuthPage({ mode }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [providers, setProviders] = useState(null);
   const [googleReturn] = useState(() => readGoogleReturn(sessionStorage));
-  const { startDemo, staffUser, signInLocal, localAuthEnabled, user, authLoading, authError, retryAuthSession } = useAuth();
+  // Self-registration: "details" (name, email, password), then "code" (the 6 digits emailed to the applicant).
+  const [signup, setSignup] = useState({ step: "details", verificationId: "", name: "", email: "", password: "" });
+  const { startDemo, staffUser, signInLocal, completeRegistration, localAuthEnabled, user, authLoading, authError, retryAuthSession } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const googleSuccess = params.get("signedIn") === "google";
@@ -56,6 +58,7 @@ export default function AuthPage({ mode }) {
   }, [googleSuccess, googleError, authLoading]);
 
   const localPasswordAvailable = localAuthEnabled && providers?.password !== false;
+  const registrationAvailable = localPasswordAvailable && providers?.registration === true;
   const googleIdentity = staffUser || user;
   if (googleSuccess && !authLoading && googleIdentity && !googleIdentity.demo)
     return <Navigate to={safeReturnPath(target, googleIdentity.role)} replace />;
@@ -90,6 +93,47 @@ export default function AuthPage({ mode }) {
       setMessage(error?.status === 401
         ? "Email or password is incorrect. Check your details and try again."
         : error?.message || "Sign in failed. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  async function sendCode(details) {
+    setSigningIn(true);
+    setMessage("");
+    try {
+      const result = await authApi.register(details.name, details.email, details.password);
+      setSignup({ ...details, step: "code", verificationId: result.verificationId });
+      setMessage("");
+    } catch (error) {
+      setMessage(error?.status === 422 || error?.status === 400
+        ? "Check your details: enter your full name, a valid email and a password of at least 12 characters."
+        : error?.message || "We could not send the code. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  function submitRegistration(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    sendCode({ name: String(form.get("name") || "").trim(), email: String(form.get("email") || "").trim(), password: String(form.get("password") || "") });
+  }
+
+  async function submitCode(event) {
+    event.preventDefault();
+    const code = String(new FormData(event.currentTarget).get("code") || "").replace(/\D/g, "");
+    if (code.length !== 6) {
+      setMessage("Enter the 6-digit code from the email.");
+      return;
+    }
+    setSigningIn(true);
+    setMessage("");
+    try {
+      const account = await completeRegistration(signup.verificationId, code);
+      navigate(safeReturnPath(target, account.role), { replace: true });
+    } catch (error) {
+      setMessage(error?.message || "That code is wrong or has expired. Check the latest email or request a new code.");
     } finally {
       setSigningIn(false);
     }
@@ -206,26 +250,66 @@ export default function AuthPage({ mode }) {
                 {staff ? "Sign in" : title}
                 <ArrowRight size={17} />
               </button>
-            </form> : (
+            </form> : registering && registrationAvailable && signup.step === "details" ? (
+              <form onSubmit={submitRegistration}>
+                <label>
+                  Full name
+                  <input name="name" autoComplete="name" required minLength={2} maxLength={100} defaultValue={signup.name} />
+                </label>
+                <label>
+                  Email address
+                  <input name="email" type="email" autoComplete="email" placeholder="you@example.com" required maxLength={254} defaultValue={signup.email} />
+                </label>
+                <label>
+                  Password
+                  <span className="auth-entry-password">
+                    <input name="password" type={visible ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={128} required />
+                    <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? "Hide password" : "Show password"}>
+                      {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </span>
+                </label>
+                <p className="auth-entry-intro">At least 12 characters. We will email you a 6-digit code to confirm your address.</p>
+                {message && <p className="auth-entry-notice" role="status">{message}</p>}
+                <button className="auth-entry-submit" type="submit" disabled={signingIn || googleBusy}>
+                  {signingIn ? "Sending code…" : "Create an account"}
+                  <ArrowRight size={17} />
+                </button>
+              </form>
+            ) : registering && registrationAvailable ? (
+              <form onSubmit={submitCode}>
+                <p className="auth-entry-intro">
+                  We sent a 6-digit code to <strong>{signup.email}</strong>. It expires in 10 minutes. Check your spam folder if it has not arrived.
+                </p>
+                <label>
+                  Verification code
+                  <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required placeholder="000000" autoFocus />
+                </label>
+                {message && <p className="auth-entry-notice" role="status">{message}</p>}
+                <button className="auth-entry-submit" type="submit" disabled={signingIn}>
+                  {signingIn ? "Checking…" : "Verify and continue"}
+                  <ArrowRight size={17} />
+                </button>
+                <button type="button" className="auth-entry-forgot" disabled={signingIn} onClick={() => sendCode(signup)}>
+                  Send a new code
+                </button>
+                <button type="button" className="auth-entry-forgot" disabled={signingIn}
+                  onClick={() => { setSignup({ step: "details", verificationId: "", name: signup.name, email: "", password: "" }); setMessage(""); }}>
+                  Use a different email
+                </button>
+              </form>
+            ) : (
               <div>
-                {(registering || resetting) && (localPasswordAvailable || providers?.cognito) && (
+                {(registering || resetting) && (
                   <p className="auth-entry-intro">
-                    {localPasswordAvailable
-                      ? "CEDA issues test accounts for this local setup. You can also continue with Google when available."
-                      : "Account registration and password recovery are handled by CEDA’s secure identity service."}
+                    Account registration and password recovery are handled by CEDA’s secure identity service.
                   </p>
                 )}
                 {message && <p className="auth-entry-notice" role="status">{message}</p>}
-                {localPasswordAvailable ? (
-                  <Link className="auth-entry-submit" to={"/login" + suffix}>
-                    Sign in with a test account
-                    <ArrowRight size={17} />
-                  </Link>
-                ) : providers?.cognito && <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn || googleBusy}>
+                {providers?.cognito && <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn || googleBusy}>
                   {signingIn ? "Connecting…" : "Continue with secure sign in"}
                   <ArrowRight size={17} />
                 </button>}
-                {resetting && !providers?.cognito && !localPasswordAvailable && <p className="auth-entry-intro">Use your original sign-in provider to recover your account. Google accounts use your Google password.</p>}
               </div>
             )}
             {!staff && !resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
