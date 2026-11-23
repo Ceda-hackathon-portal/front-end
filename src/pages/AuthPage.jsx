@@ -1,5 +1,7 @@
 import OptimizedImage from "../components/shared/OptimizedImage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import GoogleSignInButton from "../components/shared/GoogleSignInButton";
+import { GOOGLE_RETURN_KEY, readGoogleReturn, googleFailureMessage } from "../utils/googleSignIn";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronDown, Eye, EyeOff } from "lucide-react";
 import Brand from "../components/shared/Brand";
@@ -20,12 +22,17 @@ export default function AuthPage({ mode }) {
   const [reviewerId, setReviewerId] = useState("e_01");
   const [managerId, setManagerId] = useState("u_pm_demo");
   const [signingIn, setSigningIn] = useState(false);
-  const { startDemo, logout, staffUser, signInLocal, localAuthEnabled, user } = useAuth();
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [providers, setProviders] = useState(null);
+  const [googleReturn] = useState(() => readGoogleReturn(sessionStorage));
+  const { startDemo, logout, staffUser, signInLocal, localAuthEnabled, user, authLoading, authError, retryAuthSession } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const target = params.get("redirect");
+  const googleSuccess = params.get("signedIn") === "google";
+  const googleError = params.get("error") === "google";
+  const target = params.get("redirect") || ((googleSuccess || googleError) ? googleReturn.target : null);
   const suffix = target ? "?redirect=" + encodeURIComponent(target) : "";
-  const staff = mode === "staff";
+  const staff = mode === "staff" || ((googleSuccess || googleError) && googleReturn.staff);
   const registering = mode === "register";
   const resetting = mode === "reset";
   const configuredLocalEmail = import.meta.env.VITE_LOCAL_AUTH_EMAIL || "";
@@ -36,6 +43,22 @@ export default function AuthPage({ mode }) {
       : registering
         ? "Create an account"
         : "Sign in";
+
+  useEffect(() => {
+    let active = true;
+    authApi.providers().then(value => { if (active) setProviders(value); }).catch(() => {
+      if (active) setProviders({ google: false, cognito: false });
+    });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (googleError || (googleSuccess && !authLoading)) sessionStorage.removeItem(GOOGLE_RETURN_KEY);
+  }, [googleSuccess, googleError, authLoading]);
+
+  const localPasswordAvailable = localAuthEnabled && providers?.password !== false;
+  const googleIdentity = staffUser || user;
+  if (googleSuccess && !authLoading && googleIdentity && !googleIdentity.demo)
+    return <Navigate to={safeReturnPath(target, googleIdentity.role)} replace />;
 
   if (!staff && user && mode === "login")
     return <Navigate to={safeReturnPath(target, "submitter")} replace />;
@@ -114,7 +137,12 @@ export default function AuthPage({ mode }) {
                 <Link to="/login">applicant page</Link>.
               </p>
             )}
-            {staff || (localAuthEnabled && !registering && !resetting) ? <form onSubmit={submit}>
+            {googleError && <p className="auth-entry-notice" role="alert">{googleFailureMessage(params.get("reason"))}</p>}
+            {googleSuccess && <p className="auth-entry-notice" role={authLoading ? "status" : "alert"}>
+              {authLoading ? "Checking your Google sign-in…" : authError || "Your Google session could not be restored. Please try signing in again."}
+              {!authLoading && authError && <button type="button" onClick={retryAuthSession}>Check again</button>}
+            </p>}
+            {localPasswordAvailable && !registering && !resetting ? <form onSubmit={submit}>
               {registering && (
                 <label>
                   Full name
@@ -174,24 +202,26 @@ export default function AuthPage({ mode }) {
                   {message}
                 </p>
               )}
-              <button className="auth-entry-submit" type="submit" disabled={signingIn}>
+              <button className="auth-entry-submit" type="submit" disabled={signingIn || googleBusy}>
                 {staff ? "Sign in" : title}
                 <ArrowRight size={17} />
               </button>
             </form> : (
               <div>
-                {(registering || resetting) && (
+                {(registering || resetting) && providers?.cognito && (
                   <p className="auth-entry-intro">
                     Account registration and password recovery are handled by CEDA’s secure identity service.
                   </p>
                 )}
                 {message && <p className="auth-entry-notice" role="status">{message}</p>}
-                <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn}>
+                {providers?.cognito && <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn || googleBusy}>
                   {signingIn ? "Connecting…" : "Continue with secure sign in"}
                   <ArrowRight size={17} />
-                </button>
+                </button>}
+                {resetting && !providers?.cognito && <p className="auth-entry-intro">Use your original sign-in provider to recover your account. Google accounts use your Google password.</p>}
               </div>
             )}
+            {!resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
             {staff ? (
               <p className="auth-entry-alternate">
                 No staff account? Ask the platform administrator.
