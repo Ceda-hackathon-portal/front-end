@@ -733,7 +733,14 @@ export function PortalProvider({ children }) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
     if (apiApplicant && draft.backendOwnerId === user.id) {
-      await serviceApi.post('/privacy/consent', {version:'2026-11-23',accepted:true});
+      try {
+        await serviceApi.post('/privacy/consent', { version: '2026-11-23', accepted: true });
+      } catch (error) {
+        if (error.status === 404 || error.status === 405) {
+          throw new Error("CEDA’s submission service is unavailable. Your saved draft and documents are kept. Please contact support.", { cause: error });
+        }
+        throw error;
+      }
       const storedDraft = readCurrentState().drafts.find(
         (item) => item.id === draft.id && item.backendOwnerId === user.id,
       );
