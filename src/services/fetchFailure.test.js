@@ -14,6 +14,7 @@ test("rejected fetches without an HTTP response remain API availability errors",
   const cause = new TypeError("fetch failed");
   const failure = fetchFailure(cause);
   assert.equal(failure.code, "API_UNAVAILABLE");
-  assert.match(failure.message, /^Cannot reach the CEDA API/);
+  assert.match(failure.message, /^Cannot reach CEDA/);
+  assert.doesNotMatch(failure.message, /localhost|3001/);
   assert.equal(failure.cause, cause);
 });
