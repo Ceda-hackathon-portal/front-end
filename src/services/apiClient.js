@@ -194,6 +194,29 @@ export const authApi = {
     clearCsrfToken();
     return result?.data || result;
   },
+  // Applicant self-registration: send details, then confirm the 6-digit code emailed to the applicant.
+  async register(name, email, password, options = {}) {
+    const token = await obtainCsrfToken(options.signal);
+    const result = await apiRequest("/auth/register", {
+      ...options,
+      method: "POST",
+      body: { name, email, password },
+      headers: { ...options.headers, "X-CSRF-Token": token },
+    });
+    return result?.data || result;
+  },
+  async verifyRegistration(verificationId, code, options = {}) {
+    const token = await obtainCsrfToken(options.signal);
+    const result = await apiRequest("/auth/register/verify", {
+      ...options,
+      method: "POST",
+      body: { verificationId, code },
+      headers: { ...options.headers, "X-CSRF-Token": token },
+    });
+    // A new session now exists; the anonymous CSRF token no longer applies.
+    clearCsrfToken();
+    return result?.data || result;
+  },
   session(options) {
     if (!sessionRequest) {
       sessionRequest = apiRequest("/auth/session", options)

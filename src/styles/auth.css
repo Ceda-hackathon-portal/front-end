@@ -14,6 +14,8 @@ html:has(.auth-entry) { zoom: 1; scroll-padding-top: 24px; }
 .auth-entry-password input { padding-right: 48px !important; }
 .auth-entry-password > button { position: absolute; inset: 0 10px 0 auto; width: 32px; border: 0; background: transparent; color: #8d9186; display: grid; place-items: center; }
 .auth-entry-forgot { align-self: flex-end; font-size: 11px; color: #8c8e84; margin-top: -10px; }
+.auth-entry-form button.auth-entry-forgot { background: none; border: 0; padding: 0; margin-top: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.auth-entry-form button.auth-entry-forgot:disabled { opacity: 0.5; cursor: default; }
 .auth-entry-submit { display: flex; justify-content: center; align-items: center; gap: 18px; width: 100%; min-height: 52px; border-radius: 6px; border: 0; background: #3d3028; color: #fff; padding: 13px 20px; font-size: 13px; font-weight: 500; }
 .auth-entry-submit:hover { background: #674632; }
 .auth-entry-alternate { display: block; width: fit-content; margin: 24px auto; font-size: 12px; color: #87745f; }
