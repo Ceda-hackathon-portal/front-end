@@ -116,7 +116,7 @@ for (const result of ["selected", "not_selected"]) {
         );
         await field(
           page,
-          "I have reviewed the answers and attachments.",
+          "I have reviewed my answers and attachments and read the privacy notice for processing my application.",
         ).check();
         await action(page, "Submit updated application").click();
         await expect(page).toHaveURL(new RegExp(record.id + "\\?submitted=1$"));
