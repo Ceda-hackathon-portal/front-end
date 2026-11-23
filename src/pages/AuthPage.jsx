@@ -208,17 +208,24 @@ export default function AuthPage({ mode }) {
               </button>
             </form> : (
               <div>
-                {(registering || resetting) && providers?.cognito && (
+                {(registering || resetting) && (localPasswordAvailable || providers?.cognito) && (
                   <p className="auth-entry-intro">
-                    Account registration and password recovery are handled by CEDA’s secure identity service.
+                    {localPasswordAvailable
+                      ? "CEDA issues test accounts for this local setup. You can also continue with Google when available."
+                      : "Account registration and password recovery are handled by CEDA’s secure identity service."}
                   </p>
                 )}
                 {message && <p className="auth-entry-notice" role="status">{message}</p>}
-                {providers?.cognito && <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn || googleBusy}>
+                {localPasswordAvailable ? (
+                  <Link className="auth-entry-submit" to={"/login" + suffix}>
+                    Sign in with a test account
+                    <ArrowRight size={17} />
+                  </Link>
+                ) : providers?.cognito && <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn || googleBusy}>
                   {signingIn ? "Connecting…" : "Continue with secure sign in"}
                   <ArrowRight size={17} />
                 </button>}
-                {resetting && !providers?.cognito && <p className="auth-entry-intro">Use your original sign-in provider to recover your account. Google accounts use your Google password.</p>}
+                {resetting && !providers?.cognito && !localPasswordAvailable && <p className="auth-entry-intro">Use your original sign-in provider to recover your account. Google accounts use your Google password.</p>}
               </div>
             )}
             {!resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
