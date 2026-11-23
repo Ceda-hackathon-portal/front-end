@@ -636,7 +636,7 @@ function ApplicationForm({ draft }) {
             aria-invalid={Boolean(errors.consent)}
             aria-describedby={errors.consent ? "error-consent" : undefined}
           />
-          <span>I have reviewed the answers and attachments.</span>
+          <span>I have reviewed my answers and attachments and read the <a href="/privacy" target="_blank" rel="noreferrer">privacy notice</a> for processing my application.</span>
         </label>
         {errors.consent && (
           <p className="ap-field-error" id="error-consent">
