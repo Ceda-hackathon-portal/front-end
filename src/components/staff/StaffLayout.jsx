@@ -1,6 +1,7 @@
 import {useServiceData} from '../service/useServiceData';
 import {serviceApi} from '../../services/serviceApi';
 import OptimizedImage from "../shared/OptimizedImage";
+import GoogleSignInButton from "../shared/GoogleSignInButton";
 import {
   Link,
   NavLink,
@@ -230,6 +231,7 @@ export default function StaffLayout() {
               </summary>
               <div className="st-account-menu">
                 <span>{staffUser.name}</span>
+                {connected && <GoogleSignInButton link staff target={pathname} />}
                 <button
                   type="button"
                   onClick={async () => {
