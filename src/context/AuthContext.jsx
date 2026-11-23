@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { roles } from "../data/portal";
 import { currentManager, otherManager, evaluators } from "../data/admin";
 import { authApi, clearCsrfToken } from "../services/apiClient";
+import { staffApi } from "../services/staffApi";
 
 export const AuthContext = createContext(null);
 
@@ -9,7 +10,16 @@ const localAuthEnabled = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTH 
 
 // Applicants and CEDA staff sign in separately and never share a session:
 // `user` is the applicant (public site and /portal, /workspace), `staffUser` is staff (/staff and the staff workspaces).
-// Both demo identities live in memory. This is a UI preview, never an authentication token.
+// Demo identities live in memory and are never an authentication token. A real session holds one kind of account:
+// the API reports a staff role from programme grants, or the account is an applicant.
+async function staffRoleOf() {
+  try {
+    return (await staffApi.me()).role;
+  } catch (error) {
+    if (error?.status === 403 || error?.status === 404) return null;
+    throw error;
+  }
+}
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [staffUser, setStaffUser] = useState(null);
@@ -24,14 +34,19 @@ export function AuthProvider({ children }) {
       if (!active) return;
       // A demo applicant has no server session, so an API 401 cannot expire it.
       setUser((current) => (current?.demo ? current : null));
+      setStaffUser((current) => (current?.demo ? current : null));
       setAuthError("");
     };
     window.addEventListener("ceda:session-expired", handleExpiredSession);
     setAuthLoading(true);
     setAuthError("");
     authApi.session()
-      .then((session) => {
-        if (active && session?.user?.id) {
+      .then(async (session) => {
+        if (!session?.user?.id) return;
+        const staffRole = await staffRoleOf();
+        if (active && staffRole) {
+          setStaffUser({ ...session.user, role: staffRole, demo: false });
+        } else if (active) {
           // Authentication proves identity only. Applicant presentation access does
           // not confer staff permissions; the API remains the authorization boundary.
           setUser({ ...session.user, role: "submitter", demo: false });
@@ -63,14 +78,28 @@ export function AuthProvider({ children }) {
     setAuthError("");
   }
 
+  async function staffLogout() {
+    if (staffUser && !staffUser.demo) await authApi.logout();
+    clearCsrfToken();
+    setStaffUser(null);
+  }
+
   async function signInLocal(email, password) {
     if (!localAuthEnabled) throw new Error("Local password sign in is available only in configured development mode.");
     const result = await authApi.localLogin(email, password);
     const session = result?.user ? result : await authApi.session();
     if (!session?.user?.id) throw new Error("The server did not return an authenticated session.");
-    setUser({ ...session.user, role: "submitter", demo: false });
+    const staffRole = await staffRoleOf();
+    const identity = { ...session.user, role: staffRole || "submitter", demo: false };
+    if (staffRole) {
+      setStaffUser(identity);
+      setUser((current) => (current?.demo ? current : null));
+    } else {
+      setUser(identity);
+      setStaffUser((current) => (current?.demo ? current : null));
+    }
     setAuthError("");
-    return session.user;
+    return identity;
   }
 
   function startDemo(role, reviewerId = "e_01", managerId = "u_pm_demo") {
@@ -123,7 +152,7 @@ export function AuthProvider({ children }) {
         authModalTarget,
         closeAuthModal: () => setAuthModalTarget(null),
         staffUser,
-        staffLogout: () => setStaffUser(null),
+        staffLogout,
       }}
     >
       {children}

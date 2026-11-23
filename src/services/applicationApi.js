@@ -37,7 +37,23 @@ function submissionKey(userId, applicationId, revision) {
   return { key, storageKey };
 }
 
+let programmesRequest = null;
+
+export const programmesApi = {
+  open() {
+    programmesRequest ??= apiRequest("/programmes").then(dataOf).catch((error) => {
+      programmesRequest = null;
+      throw error;
+    });
+    return programmesRequest;
+  },
+};
+
 export const applicationsApi = {
+  async progress(applicationId) {
+    return dataOf(await apiRequest(`/progress/${encodeURIComponent(applicationId)}`));
+  },
+
   withMutation(applicationId, operation) {
     return serializeMutation(applicationId, operation);
   },

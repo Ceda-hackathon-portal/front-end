@@ -17,8 +17,8 @@ import {
 } from "../services/applicantDocuments";
 
 import { applicationReference } from "../utils/applicant";
-import { applicationsApi } from "../services/applicationApi";
-import { budgetRows, restoreRemoteApplications } from "../utils/applicationPersistence.js";
+import { applicationsApi, programmesApi } from "../services/applicationApi";
+import { applicantForApi, budgetRows, restoreRemoteApplications } from "../utils/applicationPersistence.js";
 
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -65,6 +65,26 @@ function expectedRevision(own, input) {
 }
 
 const STORAGE_KEY = "ceda.applicant.v2";
+
+// What the API stores beside the idea: the profile, and answers to the programme's published eligibility rules.
+async function apiFields(draft, profile) {
+  const programmeRules = (await programmesApi.open()).find((item) =>
+    draft.programmeVersionId ? item.programmeVersionId === draft.programmeVersionId : item.programmeId === draft.programmeId,
+  )?.requirements || [];
+  const answered = profile.citizen === "yes" || profile.citizen === "no";
+  return {
+    title: draft.title,
+    theme: draft.theme,
+    problem: draft.problem,
+    solution: draft.solution,
+    impact: draft.impact,
+    team: draft.team,
+    applicant: applicantForApi(profile),
+    ...(answered && programmeRules.includes("botswana-citizen")
+      ? { eligibilityEvidence: [{ requirementId: "botswana-citizen", value: profile.citizen === "yes" }] }
+      : {}),
+  };
+}
 const LEGACY_KEY = "ceda.prototype.v1";
 const copy = (value) => structuredClone(value);
 
@@ -197,6 +217,7 @@ export function PortalProvider({ children }) {
   const ownProfileSave = useRef(null);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsError, setApplicationsError] = useState("");
+  const [restoredFor, setRestoredFor] = useState(null);
   const applicationsRequest = useRef(0);
   const [documentsBusy, setDocumentsBusy] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 0 });
@@ -210,14 +231,27 @@ export function PortalProvider({ children }) {
     setApplicationsLoading(true);
     setApplicationsError("");
     try {
-      const records = await applicationsApi.list();
+      const records = await Promise.all((await applicationsApi.list()).map(async (record) =>
+        record.stage === "SUBMITTED"
+          ? {
+              ...record,
+              progress: await applicationsApi.progress(record.id).catch((error) => {
+                if (error.status === 401) throw error;
+                return null; // one unavailable stage must not hide the applicant's whole list
+              }),
+            }
+          : record));
       if (requestId !== applicationsRequest.current) return false;
+      const storedProfile = records.find((record) => record.fields?.applicant?.fullName)?.fields.applicant;
+      if (storedProfile)
+        setAccountProfile((current) => (current.fullName ? current : { ...copy(emptyProfile), ...storedProfile }));
       const change = (current) => restoreRemoteApplications(current, user.id, records);
       try {
         await commit(change);
       } catch {
         store.updateMemory(change, "Applications were restored from CEDA; browser storage is unavailable.");
       }
+      setRestoredFor(user.id);
       return true;
     } catch (error) {
       if (requestId === applicationsRequest.current)
@@ -230,6 +264,7 @@ export function PortalProvider({ children }) {
   useEffect(() => {
     if (!apiApplicant || !user?.id) {
       applicationsRequest.current += 1;
+      setRestoredFor(null);
       setApplicationsLoading(false);
       setApplicationsError("");
       return;
@@ -341,8 +376,14 @@ export function PortalProvider({ children }) {
     if (theme && !themes.some((item) => item.id === theme))
       throw new Error("Choose an available theme.");
     if (apiApplicant) {
-      const programmeId = import.meta.env.VITE_CEDA_PROGRAMME_ID;
-      const programmeVersionId = import.meta.env.VITE_CEDA_PROGRAMME_VERSION_ID;
+      let programmeId = import.meta.env.VITE_CEDA_PROGRAMME_ID;
+      let programmeVersionId = import.meta.env.VITE_CEDA_PROGRAMME_VERSION_ID;
+      if (!programmeId || !programmeVersionId) {
+        // Newest published programme first.
+        const [open] = await programmesApi.open();
+        programmeId = open?.programmeId;
+        programmeVersionId = open?.programmeVersionId;
+      }
       if (!programmeId || !programmeVersionId)
         throw new Error("The backend has no published programme configured for local applications.");
       let application = await applicationsApi.create({ programmeId, programmeVersionId });
@@ -352,6 +393,7 @@ export function PortalProvider({ children }) {
       const draft = {
         ...blankDraft(application.id, theme),
         programmeId: application.programmeId,
+        programmeVersionId: application.programmeVersionId,
         budgetItems: budgetRows(application.budget?.items),
         fundingRequested: application.budget?.fundingRequested || "",
         budgetNotApplicable: Boolean(application.budget?.notApplicable),
@@ -382,14 +424,10 @@ export function PortalProvider({ children }) {
         if (!previous || previous.backendOwnerId !== user.id)
           throw new Error("This backend draft is not available in the current account.");
         checkDraftRevision(draft, previous);
-        const fields = {
-          title: draft.title,
-          theme: draft.theme,
-          problem: draft.problem,
-          solution: draft.solution,
-          impact: draft.impact,
-          team: draft.team,
-        };
+        const fields = await apiFields(
+          { ...draft, programmeVersionId: previous.programmeVersionId || draft.programmeVersionId },
+          profile || currentAccountProfile,
+        );
         const budget = { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) };
         const saved = await applicationsApi.withMutation(draft.id, () => {
           const live = readCurrentState().drafts.find((item) => item.id === draft.id);
@@ -699,14 +737,10 @@ export function PortalProvider({ children }) {
       );
       if (!storedDraft)
         throw new Error("This backend draft is not available in the current account.");
-      const fields = {
-        title: draft.title,
-        theme: draft.theme,
-        problem: draft.problem,
-        solution: draft.solution,
-        impact: draft.impact,
-        team: draft.team,
-      };
+      const fields = await apiFields(
+        { ...draft, programmeVersionId: storedDraft.programmeVersionId || draft.programmeVersionId },
+        profile || currentAccountProfile,
+      );
       const budget = { items: draft.budgetItems.map(({ description, amount }) => ({ description, amount: String(amount) })), fundingRequested: String(draft.fundingRequested || ""), notApplicable: Boolean(draft.budgetNotApplicable) };
       let submitRevision = storedDraft.backendSubmitRevision;
       let submission = storedDraft.backendPendingSubmission;
@@ -1221,6 +1255,8 @@ export function PortalProvider({ children }) {
         draft,
         storageWarning,
         applicationsLoading,
+        // The form must not open on blanks or a stale cache: it would save them over the account's record.
+        applicationsReady: !apiApplicant || restoredFor === user.id,
         applicationsError,
         refreshApplications,
         documentsBusy,

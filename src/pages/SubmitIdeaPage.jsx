@@ -36,7 +36,7 @@ const money = (value) =>
   );
 
 export default function SubmitIdeaPage() {
-  const { drafts, createDraft, applicationsLoading, applicationsError, refreshApplications } = usePortal();
+  const { drafts, createDraft, applicationsLoading, applicationsReady, applicationsError, refreshApplications } = usePortal();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -45,7 +45,9 @@ export default function SubmitIdeaPage() {
   const requestedId = params.get("draft");
   const draft = drafts.find((item) => item.id === requestedId);
   const requestedTheme = params.get("theme") || "";
-  if (draft) return <ApplicationForm key={draft.id} draft={draft} />;
+  if (draft && applicationsReady) return <ApplicationForm key={draft.id} draft={draft} />;
+  if (draft && !applicationsError)
+    return <p className="ap-page ap-inline-note" role="status">Retrieving the saved application from CEDA.</p>;
   async function start() {
     if (startingRef.current) return;
     startingRef.current = true;
@@ -111,7 +113,7 @@ export default function SubmitIdeaPage() {
             className="ap-button ap-button-primary"
             type="button"
             onClick={start}
-            disabled={starting}
+            disabled={starting || !applicationsReady}
           >
             Start a new application
             <Plus size={16} />

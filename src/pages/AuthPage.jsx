@@ -45,8 +45,8 @@ export default function AuthPage({ mode }) {
 
   async function submit(event) {
     event.preventDefault();
-    if (staff) {
-      setMessage("Staff access is not enabled for OIDC sessions yet. Use demo access below.");
+    if (staff && !localAuthEnabled) {
+      setMessage("Staff sign in is not configured on this deployment. Use demo access below.");
       return;
     }
     if (!localAuthEnabled) {
@@ -57,8 +57,12 @@ export default function AuthPage({ mode }) {
     setSigningIn(true);
     setMessage("");
     try {
-      await signInLocal(form.get("email"), form.get("password"));
-      navigate(safeReturnPath(target, "submitter"), { replace: true });
+      const account = await signInLocal(form.get("email"), form.get("password"));
+      if (staff && account.role === "submitter") {
+        setMessage("This account has no staff access. Applicants sign in on the applicant page.");
+        return;
+      }
+      navigate(safeReturnPath(target, account.role), { replace: true });
     } catch (error) {
       setMessage(error?.status === 401
         ? "Email or password is incorrect. Check your details and try again."
