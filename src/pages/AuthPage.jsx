@@ -25,7 +25,7 @@ export default function AuthPage({ mode }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [providers, setProviders] = useState(null);
   const [googleReturn] = useState(() => readGoogleReturn(sessionStorage));
-  const { startDemo, logout, staffUser, signInLocal, localAuthEnabled, user, authLoading, authError, retryAuthSession } = useAuth();
+  const { startDemo, staffUser, signInLocal, localAuthEnabled, user, authLoading, authError, retryAuthSession } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const googleSuccess = params.get("signedIn") === "google";
@@ -228,7 +228,7 @@ export default function AuthPage({ mode }) {
                 {resetting && !providers?.cognito && !localPasswordAvailable && <p className="auth-entry-intro">Use your original sign-in provider to recover your account. Google accounts use your Google password.</p>}
               </div>
             )}
-            {!resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
+            {!staff && !resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
             {staff ? (
               <p className="auth-entry-alternate">
                 No staff account? Ask the platform administrator.
@@ -245,12 +245,13 @@ export default function AuthPage({ mode }) {
                   : "Create an account"}
               </Link>
             )}
+            {staff && (
             <details className="auth-entry-demo">
               <summary>
                 Demo access
                 <ChevronDown size={14} />
               </summary>
-              {staff ? (
+
                 <div>
                   <label htmlFor="demo-role">Staff role</label>
                   <select
@@ -305,22 +306,8 @@ export default function AuthPage({ mode }) {
                     <ArrowRight size={15} />
                   </button>
                 </div>
-              ) : (
-                <div>
-                  <button
-                    type="button"
-                    className="auth-entry-demo-open"
-                    onClick={() => openDemo("submitter")}
-                  >
-                    Open the applicant demo
-                    <ArrowRight size={15} />
-                  </button>
-                  <Link to="/portal" onClick={logout}>
-                    Continue as guest
-                  </Link>
-                </div>
-              )}
             </details>
+            )}
             <div className="auth-entry-footer">
               <Link to="/">
                 <ArrowLeft size={14} />
