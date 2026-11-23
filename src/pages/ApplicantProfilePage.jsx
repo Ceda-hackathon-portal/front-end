@@ -1,4 +1,5 @@
 import ServicePreferences from '../components/service/ServicePreferences';
+import GoogleSignInButton from '../components/shared/GoogleSignInButton';
 import { useAuth } from '../hooks/useAuth';
 import { useState } from "react";
 import { Check, Save } from "lucide-react";
@@ -121,7 +122,7 @@ export default function ApplicantProfilePage() {
           </div>
         </fieldset>
       </form>
-      {user && !user.demo && <section className="ap-panel"><ServicePreferences /></section>}
+      {user && !user.demo && <section className="ap-panel"><h2>Account sign-in</h2><GoogleSignInButton link target="/workspace/profile" /><ServicePreferences /></section>}
       <section className="ap-panel">
         <ApplicantDocuments />
       </section>
