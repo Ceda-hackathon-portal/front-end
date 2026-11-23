@@ -1,3 +1,6 @@
+import { ApplicantServiceContent } from '../components/service/ApplicantServiceDrawer';
+import { useAuth } from '../hooks/useAuth';
+import SupportInformation from '../components/service/SupportInformation';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -143,6 +146,10 @@ export function ApplicantApplicationsPage() {
   );
 }
 export function ApplicantMessagesPage() {
+  const {user}=useAuth();
+  return user && !user.demo ? <section className="ap-panel sc-page sc-mail-page"><ApplicantServiceContent user={user}/></section> : <DemoApplicantMessagesPage/>;
+}
+function DemoApplicantMessagesPage() {
   const { messages, ideas, markMessageRead, markAllMessagesRead } = usePortal();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [error, setError] = useState("");
@@ -379,7 +386,7 @@ export function ApplicantHelpPage() {
     ],
     [
       "Can I finish later?",
-      "Yes. Each application is a separate draft. Save and close, then continue it from My applications. Your current files and answers are stored on this device. Cross-device access needs the connected account and application services.",
+      "Yes. Each application is a separate draft. Save and close, then continue it from My applications. Signed-in connected applications are stored against your account. Check the save confirmation before leaving. Demo applications stay on this device.",
     ],
     [
       "Which documents can I attach?",
@@ -387,7 +394,7 @@ export function ApplicantHelpPage() {
     ],
     [
       "Can I reuse a document?",
-      "Yes. Files saved in My profile appear in the application’s document library. Reuse a saved copy, remove it from a draft, or attach a replacement. Earlier submitted versions keep their original files.",
+      "Yes. Files saved in My profile appear in the application’s document library. Reuse a saved copy in another application. Connected documents cannot currently be removed from a draft. Earlier submitted versions keep their original files.",
     ],
     [
       "How are files checked?",
@@ -395,11 +402,11 @@ export function ApplicantHelpPage() {
     ],
     [
       "How do I know it was saved?",
-      "A receipt and local reference appear after a complete submission. You can download a text copy or choose Print / Save PDF. Local receipts do not confirm delivery to CEDA.",
+      "A connected submission produces a server reference and receipt in your account. Save and submission errors remain visible. A demo receipt is a browser preview and does not confirm delivery.",
     ],
     [
       "How do corrections work?",
-      "Open the application, read the item requested and its deadline, then choose Respond and update. Explain the correction and submit a new version. The reference and all earlier versions stay unchanged.",
+      "The connected service currently preserves the original submission. If CEDA requests a change, contact your consultant for the permitted next step; do not assume a demo revision changes a connected submission.",
     ],
     [
       "How do I get help?",
@@ -428,6 +435,7 @@ export function ApplicantHelpPage() {
           </details>
         ))}
       </section>
+      <SupportInformation />
     </div>
   );
 }
