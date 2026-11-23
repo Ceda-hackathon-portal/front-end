@@ -1,4 +1,6 @@
+import IncomingCall from './components/service/IncomingCall';
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import ApplicantServiceDrawer from "./components/service/ApplicantServiceDrawer";
 import PageWrapper from "./components/shared/PageWrapper";
 import GuestAuthModal from "./components/shared/GuestAuthModal";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
@@ -48,6 +50,8 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <ApplicantServiceDrawer />
+      <IncomingCall />
       <PageLoader skip={isApplicantPath} />
       <RouteProgress />
       <GuestAuthModal />
@@ -121,6 +125,7 @@ export default function App() {
                   "administrator",
                   "management",
                   "system-administrator",
+                  "support-agent",
                 ]}
               />
             }
