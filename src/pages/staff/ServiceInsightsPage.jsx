@@ -245,11 +245,11 @@ export default function ServiceInsightsPage() {
                           ? (s.count / breakdownTotal) * 100
                           : 0) + "%",
                       background: [
-                        "#a95c36",
-                        "#c99c61",
-                        "#999d7b",
-                        "#687b67",
-                        "#bdb5a8",
+                        "var(--sc-series-1, #a95c36)",
+                        "var(--sc-series-2, #c99c61)",
+                        "var(--sc-series-3, #999d7b)",
+                        "var(--sc-series-4, #687b67)",
+                        "var(--sc-series-5, #bdb5a8)",
                       ][i % 5],
                     }}
                     title={`${s.stage}: ${s.count}`}
@@ -263,11 +263,11 @@ export default function ServiceInsightsPage() {
                       <i
                         style={{
                           background: [
-                            "#a95c36",
-                            "#c99c61",
-                            "#999d7b",
-                            "#687b67",
-                            "#bdb5a8",
+                            "var(--sc-series-1, #a95c36)",
+                            "var(--sc-series-2, #c99c61)",
+                            "var(--sc-series-3, #999d7b)",
+                            "var(--sc-series-4, #687b67)",
+                            "var(--sc-series-5, #bdb5a8)",
                           ][i % 5],
                         }}
                       />
