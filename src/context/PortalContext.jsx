@@ -1,3 +1,4 @@
+import { serviceApi } from '../services/serviceApi';
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { demoIdeas, themes } from "../data/portal";
 import {
@@ -732,6 +733,7 @@ export function PortalProvider({ children }) {
     if (confirmed !== true)
       throw new Error("Confirm the declaration before submitting.");
     if (apiApplicant && draft.backendOwnerId === user.id) {
+      await serviceApi.post('/privacy/consent', {version:'2026-11-23',accepted:true});
       const storedDraft = readCurrentState().drafts.find(
         (item) => item.id === draft.id && item.backendOwnerId === user.id,
       );
