@@ -312,7 +312,14 @@ export default function AuthPage({ mode }) {
                 </button>}
               </div>
             )}
-            {!staff && !resetting && <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading} onBusy={setGoogleBusy} />}
+            {!staff && !resetting && (
+              <>
+                <GoogleSignInButton target={target} staff={staff} disabled={signingIn || authLoading || providers?.google !== true} onBusy={setGoogleBusy} />
+                {providers && providers.google !== true && (
+                  <p className="auth-entry-intro" role="status">Google sign-in is currently unavailable.</p>
+                )}
+              </>
+            )}
             {staff ? (
               <p className="auth-entry-alternate">
                 No staff account? Ask the platform administrator.
