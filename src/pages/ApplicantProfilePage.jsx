@@ -1,3 +1,5 @@
+import ServicePreferences from '../components/service/ServicePreferences';
+import { useAuth } from '../hooks/useAuth';
 import { useState } from "react";
 import { Check, Save } from "lucide-react";
 import { usePortal } from "../context/PortalContext";
@@ -7,6 +9,7 @@ import { validateProfile } from "../utils/applicantWorkflow";
 
 export default function ApplicantProfilePage() {
   const { profile, saveProfile } = usePortal();
+  const { user } = useAuth();
   const [form, setForm] = useState(() => structuredClone(profile));
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
@@ -72,12 +75,11 @@ export default function ApplicantProfilePage() {
             <h2>Contact and display preferences</h2>
           </div>
           <p className="ap-muted">
-            Choose how CEDA may contact you when delivery services are
-            connected. Application content is not included in SMS.
+            Display preferences are saved on this device. Manage account alerts below.
           </p>
           {[
-            ["email", "Email updates"],
-            ["sms", "SMS updates"],
+
+
             ["dataLight", "Data-light mode — hide decorative photos"],
           ].map(([key, label]) => (
             <label className="ap-check-row" key={key}>
@@ -119,6 +121,7 @@ export default function ApplicantProfilePage() {
           </div>
         </fieldset>
       </form>
+      {user && !user.demo && <section className="ap-panel"><ServicePreferences /></section>}
       <section className="ap-panel">
         <ApplicantDocuments />
       </section>
