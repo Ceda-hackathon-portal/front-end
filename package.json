@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx",
-    "test": "node --test src/utils/applicant.test.js src/utils/admin.test.js src/utils/applicantWorkflow.test.js src/utils/staffWorkflow.test.js src/utils/staffRouting.test.js src/utils/applicationTimeline.test.js src/services/browserPersistence.test.js",
+    "test": "node --test \"src/**/*.test.js\"",
     "test:e2e": "npm run build && playwright test"
   },
   "devDependencies": {

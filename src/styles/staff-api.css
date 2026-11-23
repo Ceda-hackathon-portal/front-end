@@ -1,0 +1,30 @@
+/* Signed-in staff workspace. Builds on staff.css. */
+.sa-queue { padding-block: 4px; }
+.sa-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 16px 0; color: inherit; }
+.sa-row + .sa-row { border-top: 1px solid var(--st-line); }
+.sa-row-main { flex: 1 1 260px; min-width: 0; }
+.sa-row-main strong { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.sa-row-main small { display: block; margin-top: 3px; font-size: 12px; color: var(--st-muted); overflow-wrap: anywhere; }
+.sa-row:hover strong { color: var(--st-brand); }
+.sa-case-header .st-eyebrow, .sa-case-header h1 { overflow-wrap: anywhere; }
+.sa-case > .st-panel p { margin-top: 8px; }
+.sa-start { justify-content: flex-start; margin-top: 14px; }
+.sa-team { list-style: none; margin: 10px 0 0; padding: 0; }
+.sa-team li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-top: 1px solid var(--st-line); }
+.sa-inline { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.sa-inline select { flex: 1 1 240px; width: auto; }
+.sa-answers div { margin-top: 14px; }
+.sa-answers dt { font-size: 12px; color: var(--st-muted); }
+.sa-answers dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sa-document { margin-top: 16px; margin-right: 16px; }
+.sa-case form > .st-button, .sa-case section > .st-button { margin-top: 14px; }
+.sa-criterion { display: grid; grid-template-columns: minmax(0, 1.2fr) 100px minmax(0, 2fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--st-line); }
+.sa-criterion strong { display: block; font-weight: 500; }
+.sa-criterion small { display: block; font-size: 12px; color: var(--st-muted); }
+.sa-criterion select { align-self: start; }
+.sa-case form > .st-actions { margin-top: 14px; }
+.sa-review { margin-top: 12px; }
+.sa-review summary { cursor: pointer; font-weight: 500; }
+@media (max-width: 760px) {
+  .sa-criterion { grid-template-columns: minmax(0, 1fr); }
+}

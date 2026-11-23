@@ -54,9 +54,10 @@ export default function ApplicantLayout() {
   const dataLight = isApplicant && profile.preferences?.dataLight
   const isHome = location.pathname === '/portal' || location.pathname === '/workspace'
   const isApplication = /^\/workspace\/ideas\/[^/]+$/.test(location.pathname)
+  const isConfirmation = /^\/workspace\/ideas\/[^/]+\/submitted$/.test(location.pathname)
   const hero = pageHeroes[location.pathname] || {
-    title: isApplication ? 'Application details' : 'Page not found',
-    image: isApplication ? 'applicant-enterprise.jpg' : 'applicant-guide.jpg',
+    title: isApplication ? 'Application details' : isConfirmation ? 'Application submitted' : 'Page not found',
+    image: isApplication || isConfirmation ? 'applicant-enterprise.jpg' : 'applicant-guide.jpg',
     position: 'center 42%', mobilePosition: '65% center',
   }
 

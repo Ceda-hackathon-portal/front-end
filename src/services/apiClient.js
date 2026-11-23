@@ -19,6 +19,9 @@ export class ApiError extends Error {
 
 let csrfToken = null;
 let csrfRequest = null;
+let csrfTokenAt = 0;
+// The server accepts a token for ten minutes, and only for the session that requested it.
+const CSRF_MAX_AGE_MS = 5 * 60 * 1000;
 let sessionRequest = null;
 
 function notifySessionExpired() {
@@ -32,6 +35,11 @@ function apiUrl(path) {
     throw new TypeError("API paths must be same-origin paths beginning with one slash.");
   }
   return `${API_BASE_URL}${API_PREFIX}${path}`;
+}
+
+function fieldsFromDetails(details) {
+  if (!Array.isArray(details)) return undefined;
+  return Object.fromEntries(details.filter((item) => item?.path).map((item) => [item.path, "Check this value."]));
 }
 
 async function readError(response) {
@@ -53,13 +61,14 @@ async function readError(response) {
     status: response.status,
     code: error.code,
     message: error.message || statusMessages[response.status] || "The request could not be completed.",
-    fields: error.fields,
+    // The API reports field problems as details: [{ path, code }].
+    fields: error.fields || fieldsFromDetails(error.details),
     requestId: error.requestId || response.headers.get("x-request-id"),
   });
 }
 
 async function obtainCsrfToken(signal) {
-  if (csrfToken) return csrfToken;
+  if (csrfToken && Date.now() - csrfTokenAt < CSRF_MAX_AGE_MS) return csrfToken;
   if (!csrfRequest) {
     csrfRequest = fetch(apiUrl("/auth/csrf"), {
       method: "GET",
@@ -79,6 +88,7 @@ async function obtainCsrfToken(signal) {
           throw new ApiError({ status: response.status, code: "CSRF_TOKEN_MISSING", message: "The server did not provide a CSRF token." });
         }
         csrfToken = token;
+        csrfTokenAt = Date.now();
         return token;
       })
       .finally(() => {
@@ -134,8 +144,17 @@ export async function apiRequest(path, options = {}) {
     throw await readError(response);
   }
   if (!response.ok) {
-    if (response.status === 403) clearCsrfToken();
-    throw await readError(response);
+    const failure = await readError(response);
+    if (response.status === 403) {
+      clearCsrfToken();
+      // A CSRF refusal happens before anything is written, so one retry with a fresh token is safe.
+      if (failure.code === "CSRF_FAILED" && !options.csrfRetried) {
+        const retryHeaders = new Headers(options.headers || {});
+        retryHeaders.delete("X-CSRF-Token");
+        return apiRequest(path, { ...options, headers: retryHeaders, csrfRetried: true });
+      }
+    }
+    throw failure;
   }
   if (response.headers.get("content-length") === "0") return null;
   const contentType = response.headers.get("content-type") || "";
@@ -163,6 +182,8 @@ export const authApi = {
       body: { email, password },
       headers: { ...options.headers, "X-CSRF-Token": token },
     });
+    // The token used to sign in belongs to the anonymous cookie, not the new session.
+    clearCsrfToken();
     return result?.data || result;
   },
   session(options) {

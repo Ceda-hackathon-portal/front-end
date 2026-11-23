@@ -24,6 +24,7 @@ import { roles } from "../../data/portal";
 import "../../styles/staff.css";
 import "../../styles/staff-shell.css";
 import "../../styles/staff-workflow.css";
+import StaffApiWorkspace from "../../pages/staff/StaffApiWorkspace";
 
 const operational = [
   "eligibility-officer",
@@ -154,9 +155,12 @@ export default function StaffLayout() {
   const navigate = useNavigate();
   const hero = heroFor(pathname);
   const role = roles.find((item) => item.id === staffUser.role);
-  const links = navigation.filter(
-    (item) => !item.roles || item.roles.includes(staffUser.role),
-  );
+  const connected = !staffUser.demo;
+  const links = connected
+    ? [{ ...navigation[1], to: "/admin", end: false }]
+    : navigation.filter(
+        (item) => !item.roles || item.roles.includes(staffUser.role),
+      );
   return (
     <div className="st-shell st-workspace">
       <a className="skip-link" href="#staff-main">
@@ -219,8 +223,12 @@ export default function StaffLayout() {
                 <span>{staffUser.name}</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    staffLogout();
+                  onClick={async () => {
+                    try {
+                      await staffLogout();
+                    } catch {
+                      return; // Still signed in on the server, so stay here.
+                    }
                     navigate("/staff?redirect=%2Fadmin");
                   }}
                 >
@@ -243,17 +251,18 @@ export default function StaffLayout() {
           </div>
         </div>
         <main className="st-main" id="staff-main" tabIndex={-1}>
-          {storageWarning && (
+          {!connected && storageWarning && (
             <p className="st-alert" role="alert">
               {storageWarning}
             </p>
           )}
-          <Outlet />
+          {connected ? <StaffApiWorkspace /> : <Outlet />}
           <footer className="st-workspace-footer">
             <span>CEDA Innovation Portal</span>
             <span>
-              Local workspace. Account security, shared storage and delivery
-              require the connected services.
+              {connected
+                ? "Connected to the CEDA application service."
+                : "Local workspace. Account security, shared storage and delivery require the connected services."}
             </span>
           </footer>
         </main>

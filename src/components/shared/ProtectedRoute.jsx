@@ -11,8 +11,10 @@ export default function ProtectedRoute({ roles, headingAs: Heading = 'h1' }) {
   const forApplicants = roles.includes('submitter')
 
   if (!forApplicants) {
+    if (!staffUser && authLoading) return <section className="container page-section" role="status">Checking your session…</section>
     if (!staffUser) return <Navigate to={'/staff?redirect=' + encodeURIComponent(location.pathname + location.search)} replace />
-    if (roles.includes(staffUser.role)) return <Outlet />
+    // A signed-in staff account gets the API workspace, where the server decides what each role may see.
+    if (!staffUser.demo || roles.includes(staffUser.role)) return <Outlet />
     return (
       <section className="container page-section access-gate">
         <span className="feature-icon"><LockKeyhole size={26} /></span>

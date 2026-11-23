@@ -36,6 +36,7 @@ export default function IdeaDetailPage() {
   const [error, setError] = useState("");
   const [grounds, setGrounds] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingConsent, setPendingConsent] = useState(null);
   const navigate = useNavigate();
   const idea = ideas.find((item) => item.id === id);
   if (!idea)
@@ -340,18 +341,20 @@ export default function IdeaDetailPage() {
                   <label className="ap-check-row ap-no-print">
                     <input
                       type="checkbox"
-                      checked={Boolean(idea.referralConsent?.consent)}
+                      checked={pendingConsent ?? Boolean(idea.referralConsent?.consent)}
                       disabled={busy}
                       onChange={async (event) => {
                         const consent = event.target.checked;
                         if (busy) return;
                         setBusy(true);
+                        setPendingConsent(consent);
                         try {
                           await setReferralConsent(id, consent);
                           setError("");
                         } catch (failure) {
                           setError(failure.message);
                         } finally {
+                          setPendingConsent(null);
                           setBusy(false);
                         }
                       }}
