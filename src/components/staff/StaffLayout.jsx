@@ -1,7 +1,7 @@
+import { useEffect, useState } from "react";
 import {useServiceData} from '../service/useServiceData';
 import {serviceApi} from '../../services/serviceApi';
 import OptimizedImage from "../shared/OptimizedImage";
-import GoogleSignInButton from "../shared/GoogleSignInButton";
 import {
   Link,
   NavLink,
@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   MessageSquare,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useStaffWorkflow } from "../../context/StaffWorkflowContext";
@@ -28,6 +30,7 @@ import { roles } from "../../data/portal";
 import "../../styles/staff.css";
 import "../../styles/staff-shell.css";
 import "../../styles/staff-workflow.css";
+import "../../styles/staff-theme.css";
 import ServiceInboxPage from "../../pages/staff/ServiceInboxPage";
 import ServiceInsightsPage from "../../pages/staff/ServiceInsightsPage";
 import ServiceAuditPage from "../../pages/staff/ServiceAuditPage";
@@ -158,6 +161,14 @@ function heroFor(path) {
 }
 
 export default function StaffLayout() {
+  const [staffTheme, setStaffTheme] = useState(() => {
+    try { return localStorage.getItem("ceda:staff-theme") === "light" ? "light" : "dark"; }
+    catch { return "dark"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ceda:staff-theme", staffTheme); }
+    catch { /* The selected appearance still works when browser storage is unavailable. */ }
+  }, [staffTheme]);
   const { staffUser, staffLogout } = useAuth();
   const { storageWarning } = useStaffWorkflow();
   const { pathname } = useLocation();
@@ -172,7 +183,7 @@ export default function StaffLayout() {
         (item) => !item.roles || item.roles.includes(staffUser.role),
       );
   return (
-    <div className="st-shell st-workspace">
+    <div className="st-shell st-workspace" data-staff-theme={staffTheme}>
       <a className="skip-link" href="#staff-main">
         Skip to content
       </a>
@@ -218,6 +229,15 @@ export default function StaffLayout() {
               />
               <span>Innovation portal</span>
             </Link>
+            <div className="st-topbar-actions">
+              <div className="st-theme-switch" role="group" aria-label="Staff appearance">
+                <button type="button" aria-pressed={staffTheme === "dark"} onClick={() => setStaffTheme("dark")}>
+                  <Moon size={14} aria-hidden="true" /> Dark
+                </button>
+                <button type="button" aria-pressed={staffTheme === "light"} onClick={() => setStaffTheme("light")}>
+                  <Sun size={14} aria-hidden="true" /> Light
+                </button>
+              </div>
             <details className="st-account">
               <summary aria-label="Staff account">
                 <span className="st-avatar" aria-hidden="true">
@@ -231,7 +251,6 @@ export default function StaffLayout() {
               </summary>
               <div className="st-account-menu">
                 <span>{staffUser.name}</span>
-                {connected && <GoogleSignInButton link staff target={pathname} />}
                 <button
                   type="button"
                   onClick={async () => {
@@ -248,6 +267,7 @@ export default function StaffLayout() {
                 </button>
               </div>
             </details>
+            </div>
           </header>
           <div className="st-hero-copy">
             <span>
