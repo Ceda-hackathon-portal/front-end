@@ -182,14 +182,24 @@ export default function AuthPage({ mode }) {
               <div>
                 {(registering || resetting) && (
                   <p className="auth-entry-intro">
-                    Account registration and password recovery are handled by CEDA’s secure identity service.
+                    {localAuthEnabled
+                      ? "In this prototype, CEDA issues test accounts. In production, you create your account and reset your password through CEDA’s secure identity service, with a verification link sent to your email."
+                      : "Account registration and password recovery are handled by CEDA’s secure identity service."}
                   </p>
                 )}
                 {message && <p className="auth-entry-notice" role="status">{message}</p>}
-                <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn}>
-                  {signingIn ? "Connecting…" : "Continue with secure sign in"}
-                  <ArrowRight size={17} />
-                </button>
+                {localAuthEnabled ? (
+                  // Local accounts have no hosted identity service to hand over to, so return to the sign-in form.
+                  <Link className="auth-entry-submit" to={"/login" + suffix}>
+                    Sign in with a test account
+                    <ArrowRight size={17} />
+                  </Link>
+                ) : (
+                  <button className="auth-entry-submit" type="button" onClick={beginOidcSignIn} disabled={signingIn}>
+                    {signingIn ? "Connecting…" : "Continue with secure sign in"}
+                    <ArrowRight size={17} />
+                  </button>
+                )}
               </div>
             )}
             {staff ? (
