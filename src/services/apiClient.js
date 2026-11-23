@@ -163,6 +163,14 @@ export async function apiRequest(path, options = {}) {
 }
 
 export const authApi = {
+  async providers(options) {
+    const result = await apiRequest("/auth/providers", options);
+    return result?.data || result;
+  },
+  async google({ link = false } = {}, options = {}) {
+    const result = await apiRequest("/auth/google", { ...options, method: "POST", body: { link } });
+    return result?.data || result;
+  },
   csrf: (options) => obtainCsrfToken(options?.signal),
   async login(options = {}) {
     const token = await obtainCsrfToken(options.signal);
