@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, ChevronDown, LayoutDashboard, LogOut, Menu, Search, UserRound } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { roleHome } from '../../utils/portal'
-import ChatBubble from './PortalAssistant'
 import '../../styles/landing-header.css'
 
 const navigation = [
@@ -65,7 +64,6 @@ export default function LandingHeader() {
           </details>
         </div>
       </header>
-      <ChatBubble showHint={false} />
     </>
   )
 }
