@@ -1,0 +1,8 @@
+# Keep local settings, test output and build artefacts out of Vercel uploads.
+.env*
+!.env.example
+.claude
+node_modules
+dist
+test-results
+playwright-report

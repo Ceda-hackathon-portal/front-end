@@ -6,7 +6,10 @@ import { staffApi } from "../services/staffApi";
 
 export const AuthContext = createContext(null);
 
-const localAuthEnabled = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTH === "true";
+// Local password sign-in: the dev server, or a hosted prototype that explicitly opts in with VITE_PUBLIC_DEMO
+// (pairs with the backend's AUTH_LOCAL_PUBLIC_DEMO; fictional accounts only).
+const localAuthEnabled =
+  (import.meta.env.DEV || import.meta.env.VITE_PUBLIC_DEMO === "true") && import.meta.env.VITE_LOCAL_AUTH === "true";
 
 // Applicants and CEDA staff sign in separately and never share a session:
 // `user` is the applicant (public site and /portal, /workspace), `staffUser` is staff (/staff and the staff workspaces).
@@ -85,7 +88,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signInLocal(email, password) {
-    if (!localAuthEnabled) throw new Error("Local password sign in is available only in configured development mode.");
+    if (!localAuthEnabled) throw new Error("Local password sign in is not enabled for this deployment.");
     const result = await authApi.localLogin(email, password);
     const session = result?.user ? result : await authApi.session();
     if (!session?.user?.id) throw new Error("The server did not return an authenticated session.");
