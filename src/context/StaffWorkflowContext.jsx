@@ -50,7 +50,8 @@ function validStaffState(value) {
 }
 function applicationsFrom(portal, admin) {
   return [
-    ...portal.ideas.map((idea) => {
+    // Demo staff see demo records only. Real applications reach staff through the API and its permissions.
+    ...portal.ideas.filter((idea) => !idea.backendOwnerId).map((idea) => {
       const latest = idea.versions?.at(-1) || idea;
       return {
         ...idea,
