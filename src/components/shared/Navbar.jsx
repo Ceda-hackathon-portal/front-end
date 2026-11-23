@@ -5,7 +5,6 @@
 
 import { useLocation } from 'react-router-dom'
 import LandingHeader from './LandingHeader'
-import ChatBubble from './PortalAssistant'
 
 export default function Navbar({ showHint = false, onChatClose, hideChat = false }) {
   const { pathname } = useLocation()
@@ -16,7 +15,6 @@ export default function Navbar({ showHint = false, onChatClose, hideChat = false
       <div className={isHome ? 'site-nav' : 'site-nav site-nav-solid'}>
         <LandingHeader />
       </div>
-      {!hideChat && <ChatBubble showHint={showHint} onClose={onChatClose} />}
 
       <style>{`
         /* Home page: no extra box, so the header behaves exactly as before */
