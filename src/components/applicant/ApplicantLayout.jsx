@@ -142,7 +142,7 @@ export default function ApplicantLayout() {
           {storageWarning && <p className="ap-storage-warning" role="status">{storageWarning}</p>}
           <Outlet />
           <footer className="ap-footer">
-            <span>CEDA Innovation Portal</span><span>Saved on this device. CEDA delivery requires the application service.</span>
+            <span>CEDA Innovation Portal</span><span>{user && !user.demo ? "Applications are saved to your CEDA account." : "Demo records are saved on this device."}</span>
             <Link to="/portal/help">Help & guidance</Link>
           </footer>
         </main>
