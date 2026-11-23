@@ -56,3 +56,13 @@ test("staff return routes reject external, traversal and ambiguous query targets
     assert.equal(safeReturnPath(path, "evaluator"), "/review");
   }
 });
+
+test("consultant sessions return to support and preserve valid incoming conversation links",()=>{
+ const target="/admin/support?conversation=11111111-1111-4111-8111-111111111111";
+ assert.equal(roleHome("support-agent"),"/admin/support");
+ assert.equal(safeReturnPath(target,"support-agent"),target);
+ assert.equal(safeReturnPath("/admin/programmes","support-agent"),"/admin/support");
+ assert.equal(safeReturnPath("/admin/support?conversation=bad","support-agent"),"/admin/support");
+ assert.equal(safeReturnPath("/admin/activity","administrator"),"/admin/activity");
+ assert.equal(safeReturnPath(target,"submitter"),"/workspace");
+});
