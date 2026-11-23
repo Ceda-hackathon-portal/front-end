@@ -323,7 +323,7 @@ test("a failed durable submission shows an error and retries without a false or 
   await openRegister(leader);
   await signInApplicant(page);
   await fillApplication(page, "Recover a failed durable submission");
-  await field(page, "I have reviewed the answers and attachments.").check();
+  await field(page, "I have reviewed my answers and attachments and read the privacy notice for processing my application.").check();
   await page.evaluate(() => {
     window.originalE2ESetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
