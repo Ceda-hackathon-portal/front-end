@@ -1,3 +1,5 @@
+import {useServiceData} from '../service/useServiceData';
+import {serviceApi} from '../../services/serviceApi';
 import OptimizedImage from "../shared/OptimizedImage";
 import {
   Link,
@@ -17,6 +19,7 @@ import {
   Scale,
   ShieldCheck,
   SlidersHorizontal,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useStaffWorkflow } from "../../context/StaffWorkflowContext";
@@ -24,6 +27,9 @@ import { roles } from "../../data/portal";
 import "../../styles/staff.css";
 import "../../styles/staff-shell.css";
 import "../../styles/staff-workflow.css";
+import ServiceInboxPage from "../../pages/staff/ServiceInboxPage";
+import ServiceInsightsPage from "../../pages/staff/ServiceInsightsPage";
+import ServiceAuditPage from "../../pages/staff/ServiceAuditPage";
 import StaffApiWorkspace from "../../pages/staff/StaffApiWorkspace";
 
 const operational = [
@@ -99,6 +105,8 @@ function heroFor(path) {
     };
   return (
     {
+      "/admin/support": {title:"Consultant support",image:"staff-review.jpg",section:"Conversations"},
+      "/admin/activity": {title:"Activity trail",image:"staff-system.jpg",section:"Activity"},
       "/admin": {
         title: "Staff workspace",
         image: "Carousel2.jpg",
@@ -154,10 +162,11 @@ export default function StaffLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const hero = heroFor(pathname);
-  const role = roles.find((item) => item.id === staffUser.role);
+  const role = roles.find((item) => item.id === staffUser.role) || {label:staffUser.role==="support-agent"?"CEDA consultant":"CEDA staff"};
   const connected = !staffUser.demo;
+  const capabilities=useServiceData(()=>connected?serviceApi.get("/capabilities"):Promise.resolve(null),30000,staffUser.id);
   const links = connected
-    ? [{ ...navigation[1], to: "/admin", end: false }]
+    ? [{ ...navigation[1], to: "/admin", end: true }, {label:"Conversations",to:"/admin/support",icon:MessageSquare}, {label:"Insights",to:"/admin/insights",icon:BarChart3}, {label:"Activity",to:"/admin/activity",icon:ShieldCheck}].filter(item=>(item.to==="/admin"&&capabilities.data?.applications.length) || (item.to==="/admin/support"&&capabilities.data?.support.length) || (item.to==="/admin/insights"&&capabilities.data?.report.length) || (item.to==="/admin/activity"&&capabilities.data?.audit.length))
     : navigation.filter(
         (item) => !item.roles || item.roles.includes(staffUser.role),
       );
@@ -256,7 +265,7 @@ export default function StaffLayout() {
               {storageWarning}
             </p>
           )}
-          {connected ? <StaffApiWorkspace /> : <Outlet />}
+          {connected ? (pathname.startsWith("/admin/support") ? <ServiceInboxPage /> : pathname.startsWith("/admin/insights") ? <ServiceInsightsPage /> : (pathname.startsWith("/admin/activity") || pathname==="/admin/system") ? <ServiceAuditPage /> : <StaffApiWorkspace />) : <Outlet />}
           <footer className="st-workspace-footer">
             <span>CEDA Innovation Portal</span>
             <span>
