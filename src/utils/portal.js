@@ -1,5 +1,6 @@
 import { roles } from "../data/portal.js";
 export function roleHome(role) {
+  if(role==="support-agent")return "/admin/support";
   return roles.find((item) => item.id === role)?.home || "/workspace";
 }
 export function safeReturnPath(target, role) {
@@ -63,6 +64,7 @@ export function safeReturnPath(target, role) {
     "administrator",
     "management",
     "system-administrator",
+    "support-agent",
   ];
   if (staffRoles.includes(role) && typeof target === "string") {
     const [path, query = ""] = target.split("?");
@@ -74,6 +76,8 @@ export function safeReturnPath(target, role) {
     ].includes(role);
     const permitted =
       path === "/admin" ||
+      path === "/admin/support" ||
+      path === "/admin/activity" ||
       (operational &&
         (path === "/admin/applications" ||
           /^\/admin\/applications\/[a-zA-Z0-9_-]+$/.test(path))) ||
@@ -96,7 +100,9 @@ export function safeReturnPath(target, role) {
         params.getAll(key).length === 1 &&
         (key === "view"
           ? /^[a-z_]{1,30}$/.test(value)
-          : key === "q" && value.length <= 200),
+          : key === "conversation" && path === "/admin/support"
+            ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+            : key === "q" && value.length <= 200),
     );
     if (
       permitted &&
