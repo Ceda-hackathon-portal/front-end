@@ -55,3 +55,10 @@ html:has(.auth-entry) { zoom: 1; scroll-padding-top: 24px; }
   .auth-entry h1 { margin-bottom: 30px; }
   .auth-entry-footer { flex-wrap: wrap; }
 }
+
+.auth-google-option { margin: 20px 0; }
+.auth-entry-google { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 1px solid #747775; border-radius: 6px; padding: 11px 16px; background: #fff; color: #1f1f1f; font: 500 14px/20px Arial, sans-serif; cursor: pointer; }
+.auth-entry-google:hover { background: #f8f9fa; }
+.auth-entry-google:disabled { opacity: .6; cursor: wait; }
+.auth-entry-google svg { flex-shrink: 0; }
+.st-account-menu .auth-google-option { margin: 8px 0; }
