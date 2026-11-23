@@ -3,7 +3,7 @@ export function fetchFailure(cause) {
   return {
     status: 0,
     code: cancelled ? "REQUEST_ABORTED" : "API_UNAVAILABLE",
-    message: cancelled ? "The request was cancelled." : "Cannot reach the CEDA API. Check that the local backend is running on localhost:3001.",
+    message: cancelled ? "The request was cancelled." : "Cannot reach CEDA. Check your connection and try again. If the problem continues, contact support.",
     cause,
   };
 }
