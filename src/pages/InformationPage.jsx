@@ -1,3 +1,5 @@
+import SupportInformation from '../components/service/SupportInformation'
+import '../styles/service-center.css'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 const information = {
@@ -11,21 +13,26 @@ const information = {
   },
   help: {
     eyebrow: 'Support', title: 'Help',
-    introduction: 'Explore services or open a demo workspace.',
+    introduction: 'Find answers, contact a consultant or report a portal fault.',
     sections: [
-      ['How do I try a submission?', 'Open the Applicant demo, choose New idea and complete the required fields with fictional information. Save a draft or add a demo submission. Records stay in this browser when storage is available.'],
-      ['How do I preview staff screens?', 'On the sign-in page, choose Evaluator, Adjudicator, Programme administrator, CEDA management or System administrator from the demo workspace list. Each role has a separate view.'],
-      ['Where are my live updates?', 'Live notifications, reviewer messages, file uploads and real accounts are not connected in this first phase. Existing feedback is example content.'],
+      ['How do I apply?', 'Sign in, choose a programme, complete the required sections and attach the requested documents. Review the declaration before submitting. A successful submission produces a reference in your account.'],
+      ['Can I save and return?', 'Connected applications are saved against your account. Check the save confirmation before leaving. Demo records stay in the browser and are separate from connected accounts.'],
+      ['Which files are accepted?', 'PDF, DOCX, JPG and PNG files, up to 10 MB each and 10 per application. Use the document category shown in the programme checklist.'],
+      ['How do I get a response?', 'Open the support button and sign in to start a private consultant conversation. Replies appear in the same conversation. After hours, your message is queued.'],
+      ['How do I receive updates?', 'Open support, then Settings to manage free account-based alerts. Email is available only when its delivery service is configured.'],
+      ['What should I do after an error?', 'Keep your answers and retry after checking the connection. If a submission response is uncertain, reopen the application before attempting another submission. Send the request reference to support if provided.'],
     ],
   },
   privacy: {
-    eyebrow: 'Your information', title: 'Privacy',
-    introduction: 'Use fictional information in this prototype.',
+    eyebrow: 'Your information', title: 'Privacy notice',
+    introduction: 'Version 2026-11-23. This notice describes the portal implementation; CEDA must approve the controller details and retention schedule before public use.',
     sections: [
-      ['What this prototype stores', 'Demo submissions and one draft are saved under ceda.prototype.v1 in this browser’s local storage. They are shared between demo roles in the same browser. Demo identities last only for the current page session.'],
-      ['What leaves this prototype', 'Account and submission forms do not send information to a backend. The page loads typography from Google Fonts. The CEDA website link opens the official external site.'],
-      ['Remove your demo information', 'Clear this site’s storage in your browser settings to remove saved prototype records. Refreshing ends the demo identity but retains local drafts and submissions.'],
-      ['Before live use', 'The team must implement access controls, secure file storage, appropriate data handling and retention, an approved privacy notice and protection for submitted ideas.'],
+      ['Purpose and access', 'Account details, applications and supporting documents are used to administer programme participation, evaluation and support. Applicants see their own records. Staff access is checked against programme permissions and assignments. Private evaluation material is not published to applicants.'],
+      ['Support and calls', 'Conversation messages are stored in the portal database. Consultant notes are private to authorised staff. Browser audio calls are not recorded. Call signalling is retained temporarily for connection troubleshooting; audio travels between participants or through the configured relay.'],
+      ['Updates and contact consent', 'Contact preferences and the notice version are saved in your account. You can disable application alerts in support Settings. Email alerts contain a sign-in link rather than your application contents.'],
+      ['Retention and deletion', 'Submitted application records and activity history are protected against changes. A deletion request must be reviewed against the approved retention schedule and any legal hold. Call signalling is removed after one day. Other retention periods require approval and configuration; the portal does not silently erase submitted records.'],
+      ['Access, corrections and requests', 'Open support Settings to request a copy or deletion of your information. Your request has a visible status. Contact CEDA through its official help centre for privacy questions. Authentication recovery is handled through the account service.'],
+      ['External services', 'Configured email and call-relay providers process the minimum information needed for delivery or connection. Production hosting location, processors and retention arrangements must be confirmed by the service owner.'],
     ],
   },
   'not-found': { eyebrow: 'A different direction', title: 'That page isn’t here.', introduction: 'The link may belong to an earlier version of the website. There’s still plenty to explore.', sections: [] },
@@ -36,7 +43,8 @@ export default function InformationPage({ kind }) {
     <section className="container page-section">
       <header className="public-page-header"><h1>{content.title}</h1><p>{content.introduction}</p></header>
       <div className="information-grid">{content.sections.map(([title, text]) => <details className="guide-details" key={title}><summary>{title}</summary><p>{text}</p></details>)}</div>
-      <Link className="button button-outline" to={kind === 'help' ? '/login' : '/'}>{kind === 'help' ? 'Try a demo workspace' : 'Back to the portal'}<ArrowRight size={17} /></Link>
+      {kind === 'help' && <SupportInformation />}
+      <Link className="button button-outline" to={kind === 'help' ? '/login' : '/'}>{kind === 'help' ? 'Sign in for support' : 'Back to the portal'}<ArrowRight size={17} /></Link>
     </section>
   )
 }
