@@ -76,7 +76,7 @@ export default function SubmitIdeaPage() {
             : "Start a separate draft or continue saved work. Existing answers and files are kept."}
         </p>
         {applicationsError && <p role="alert" className="ap-form-alert">{applicationsError}</p>}
-        {requestedId && applicationsError && <button className="ap-button ap-button-secondary" type="button" onClick={() => void refreshApplications()}>Retry loading</button>}
+        {applicationsError && <button className="ap-button ap-button-secondary" type="button" disabled={applicationsLoading} onClick={() => void refreshApplications()}>{applicationsLoading ? "Retrying…" : "Retry loading"}</button>}
         {requestedTheme && (
           <p className="ap-inline-note">
             Selected theme:{" "}
