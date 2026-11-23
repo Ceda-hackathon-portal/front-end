@@ -102,7 +102,7 @@ export async function fillApplication(page, title) {
 }
 
 export async function submitApplication(page) {
-  await field(page, "I have reviewed the answers and attachments.").check();
+  await field(page, "I have reviewed my answers and attachments and read the privacy notice for processing my application.").check();
   await action(page, "Submit application").click();
   await expect(page).toHaveURL(/\/workspace\/ideas\/CEDA-LOCAL-.*submitted=1/);
   await expect(page.locator(".ap-page-intro .ap-eyebrow")).toBeVisible();
