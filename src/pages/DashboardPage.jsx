@@ -1,3 +1,5 @@
+import {serviceApi} from '../services/serviceApi';
+import {useServiceData} from '../components/service/useServiceData';
 import OptimizedImage from "../components/shared/OptimizedImage";
 import { Link } from "react-router-dom";
 import {
@@ -23,6 +25,8 @@ import { displayDate, roleHome } from "../utils/portal";
 export default function DashboardPage() {
   const { user, requireAuth } = useAuth();
   const { ideas, drafts, draft, profile, documents, messages } = usePortal();
+  const liveUpdates=useServiceData(()=>user&&!user.demo?serviceApi.get('/notifications'):Promise.resolve([]),10000,user?.id||'guest');
+  const accountMessages=user&&!user.demo?(liveUpdates.data||[]).map(n=>({...n,readAt:n.read_at,createdAt:n.created_at,message:'Open Messages to view your application update.'})):messages;
   const isApplicant = user?.role === "submitter";
   const hasDraft = isApplicant && drafts.length > 0;
   const progress = workflowProgress(draft, profile, documents);
@@ -33,7 +37,7 @@ export default function DashboardPage() {
     ? ideas.filter((idea) => idea.revisionRequest?.status === "open")
     : [];
   const updates = isApplicant
-    ? [...messages].sort(
+    ? [...accountMessages].sort(
         (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
       )
     : [];
